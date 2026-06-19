@@ -1,403 +1,386 @@
 import SwiftUI
 
+struct ReportsView: View {
 
-struct HomeView: View {
+    @StateObject private var uploadVM = UploadViewModel()
+    @StateObject private var reportsVM = ReportsViewModel()
 
-    @StateObject private var vm = HomeViewModel()
-
-    var kpis: [KPIModel] {
-
-        [
-
-            .init(
-
-                icon: "cpu.fill",
-
-                color: AppColors.blue,
-
-                value: vm.homeData?.pipeline ?? "-",
-
-                title: "Pipeline",
-
-                subtitle: "estado operacional"
-            ),
-
-            .init(
-
-                icon: "shippingbox.fill",
-
-                color: AppColors.green,
-
-                value: vm.homeData?.stockDataset ?? "-",
-
-                title: "Stock",
-
-                subtitle: "dataset"
-            ),
-
-            .init(
-
-                icon: "building.2.fill",
-
-                color: AppColors.orange,
-
-                value: vm.homeData?.depositoDataset ?? "-",
-
-                title: "Deposito",
-
-                subtitle: "estado"
-            ),
-
-            .init(
-
-                icon: "clock.fill",
-
-                color: AppColors.red,
-
-                value: vm.homeData?.stockFreshness ?? "-",
-
-                title: "Freshness",
-
-                subtitle: "sincronización"
-            )
-        ]
-
-        }
-
-    // let alerts: [AlertModel] = [
-
-    //     .init(
-    //         icon: "exclamationmark.triangle.fill",
-    //         color: AppColors.red,
-    //         value: "10",
-    //         title: "Riesgo crítico",
-    //         subtitle: "Acción inmediata"
-    //     ),
-
-    //     .init(
-    //         icon: "clock.fill",
-    //         color: AppColors.orange,
-    //         value: "8",
-    //         title: "Riesgo medio",
-    //         subtitle: "Revisar pronto"
-    //     ),
-
-    //     .init(
-    //         icon: "info.circle.fill",
-    //         color: AppColors.blue,
-    //         value: "12",
-    //         title: "Informativas",
-    //         subtitle: "Para considerar"
-    //     )
-    // ]
-
-    // let activities: [ActivityModel] = [
-
-    //     .init(
-    //         icon: "arrow.up.right",
-    //         color: AppColors.green,
-    //         title: "Transferencia completada",
-    //         description: "12 unidades Air Max SC T42",
-    //         detail: "Depósito Central → Alto Palermo",
-    //         time: "09:32"
-    //     ),
-
-    //     .init(
-    //         icon: "chart.pie.fill",
-    //         color: AppColors.orange,
-    //         title: "Reposición parcial",
-    //         description: "Nike Revolution 7 T41",
-    //         detail: "Sucursal 47",
-    //         time: "08:47"
-    //     )
-    // ]
+    @State private var showPicker = false
 
     var body: some View {
 
         ZStack {
 
-            ScrollView(
-                showsIndicators: false
-            ) {
-
-            VStack(
-                alignment: .leading,
-                spacing: 22
-            ) {
+            ScrollView(showsIndicators: false) {
 
                 VStack(
                     alignment: .leading,
-                    spacing: 2
-                ) {
-                    
-                    Text(
-                        vm.homeData?.pipeline ?? "-"
-                        )
-
-                    Text("Home")
-                        .font(
-                            .system(
-                                size: 34,
-                                weight: .bold
-                            )
-                        )
-
-                    Text("Resumen operativo")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppColors.secondaryText)
-                }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 2
+                    spacing: 22
                 ) {
 
-                    Text("Hola, Equipo")
-                        .font(
-                            .system(
-                                size: 20,
-                                weight: .semibold
-                            )
-                        )
+                    headerSection
 
-                    Text("Estado general del sistema")
-                        .font(.system(size: 13))
-                        .foregroundColor(AppColors.secondaryText)
+                    latestReportSection
+
+                    historySection
+
+                    configurationSection
                 }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                ) {
-
-                    SectionHeader(
-                        title: "Resumen general",
-                        actionTitle: nil
-                    )
-
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ],
-                        spacing: 14
-                    ) {
-
-                        ForEach(kpis) { item in
-                            KPICard(item: item)
-                        }
-                    }
-                }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                    ) {
-
-                    SectionHeader(
-                        title: "Alertas activas",
-                        actionTitle: nil
-                    )
-
-                    VStack(spacing: 10) {
-
-                        ForEach(vm.warnings) { item in
-
-                            AlertOperationalCard(
-
-                                item: OperationalAlertModel(
-
-                                    title: item.message,
-
-                                    subtitle: "Operational warning",
-
-                                    branch: "System",
-
-                                    sold: "0",
-
-                                    stock: "0",
-
-                                    velocity: "0",
-
-                                    needed: "0",
-
-                                    risk: "WARNING",
-
-                                    time: "NOW",
-
-                                    color: .orange,
-
-                                    icon: "exclamationmark.triangle.fill",
-
-                                    description: item.message
-                                )
-                            )
-                        }
-                    }
-
-                }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                ) {
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 14
-                    ) {
-
-                        SectionHeader(
-                            title: "Estado operacional",
-                            actionTitle: nil
-                        )
-
-                        VStack(spacing: 10) {
-
-                            ForEach(vm.warnings) { item in
-
-                                RoundedContainer {
-
-                                    HStack(spacing: 12) {
-
-                                        Image(
-                                            systemName:
-                                            "exclamationmark.triangle.fill"
-                                        )
-                                        .foregroundColor(.orange)
-
-                                        Text(item.message)
-
-                                        Spacer()
-                                    }
-                                    .padding()
-                                }
-                            }
-                        }
-                    }
-
-                    VStack(spacing: 10) {
-
-                        ForEach(vm.warnings) { item in
-
-                            ActivityTimelineCard(
-
-                                item: ActivityEventModel(
-
-                                    title: item.message,
-
-                                    description: "Operational warning",
-
-                                    time: "now"
-                                )
-                            )
-                        }
-                    }
-                }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                ) {
-
-                    SectionHeader(
-                        title: "Últimos reportes",
-                        actionTitle: nil
-                    )
-
-                    VStack(spacing: 10) {
-
-                        ForEach(vm.exports.prefix(3)) { item in
-
-                            LatestReportCard(
-
-                                item: ReportModel(
-
-                                    fileName: "Analysis Report",
-
-                                    date: item.createdAt,
-
-                                    type: "XLSX",
-
-                                    rows: "-",
-
-                                    sheets: "1",
-
-                                    size: "-",
-
-                                    status: "GENERATED",
-
-                                    statusColor: .green
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-            .padding(18)
-            .padding(.bottom, 100)
-
+                .padding(.top, 28)
+                .padding(18)
+                .padding(.bottom, 120)
             }
 
-            if vm.isLoading {
+            if uploadVM.isUploading || reportsVM.isLoading {
 
-                Color.black.opacity(0.2)
+                Color.black.opacity(0.25)
                     .ignoresSafeArea()
 
-                ProgressView()
-                    .scaleEffect(1.4)
+                VStack(spacing: 16) {
+
+                    ProgressView()
+
+                    Text(
+                        uploadVM.isUploading
+                        ? "Procesando archivo..."
+                        : "Cargando reportes..."
+                    )
+                    .foregroundColor(.white)
+                }
             }
         }
         .background(AppColors.background)
-        .ignoresSafeArea()
-
         .alert(
-
             "Error",
-
             isPresented: Binding(
-
                 get: {
-
-                    vm.errorMessage != nil
+                    uploadVM.errorMessage != nil
+                    || reportsVM.errorMessage != nil
                 },
-
                 set: { _ in
-
-                    vm.errorMessage = nil
+                    uploadVM.errorMessage = nil
+                    reportsVM.errorMessage = nil
                 }
             )
-
         ) {
-
             Button("OK") {}
-
         } message: {
-
             Text(
-                vm.errorMessage ?? ""
+                uploadVM.errorMessage
+                ?? reportsVM.errorMessage
+                ?? ""
             )
         }
-
         .task {
-
-            await vm.loadData()
+            await reportsVM.loadReports()
         }
-
         .onReceive(AppState.shared.$refreshID) { _ in
-
             Task {
+                await reportsVM.loadReports()
+            }
+        }
+        .sheet(isPresented: $showPicker) {
 
-                await vm.loadData()
+            DocumentPicker { url in
+
+                Task {
+
+                    await uploadVM.uploadFile(
+                        url: url
+                    )
+
+                    AppState.shared.refreshSystem()
+                }
             }
         }
     }
+
+    private var headerSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 8
+        ) {
+
+            Text("Reportes")
+                .font(
+                    .system(
+                        size: 34,
+                        weight: .bold
+                    )
+                )
+
+            Text("Archivos generados por el sistema")
+                .font(.system(size: 14))
+                .foregroundColor(
+                    AppColors.secondaryText
+                )
+
+            if uploadVM.uploadSuccess {
+
+                HStack(spacing: 8) {
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(AppColors.green)
+
+                    Text(
+                        uploadVM.pipelineExecuted
+                        ? "Archivo procesado correctamente"
+                        : "Archivo subido correctamente"
+                    )
+                    .font(.system(size: 13))
+                    .foregroundColor(AppColors.green)
+                }
+            }
+        }
+    }
+
+    private var latestReportSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            if let latest = reportsVM.reports.first {
+
+                RoundedContainer {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+
+                        Text("Último reporte")
+                            .font(.headline)
+
+                        Text(latest.createdAt)
+                            .font(.system(size: 13))
+                            .foregroundColor(
+                                AppColors.secondaryText
+                            )
+
+                        Text(latest.analysisReport)
+                            .font(.caption)
+                            .foregroundColor(
+                                AppColors.secondaryText
+                            )
+                    }
+                    .padding()
+                }
+
+            } else {
+
+                EmptyStateView(
+                    icon: "doc.text",
+                    title: "Sin reportes generados",
+                    message: "Cuando ejecutes el pipeline, los reportes aparecerán aquí."
+                )
+            }
+        }
+    }
+
+    private var historySection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 18
+        ) {
+
+            Text("Historial de reportes")
+                .font(
+                    .system(
+                        size: 24,
+                        weight: .bold
+                    )
+                )
+
+            HStack(spacing: 12) {
+
+                HStack(spacing: 10) {
+
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(
+                            AppColors.secondaryText
+                        )
+
+                    Text("Buscar reportes...")
+                        .foregroundColor(
+                            AppColors.secondaryText
+                        )
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 52)
+                .frame(maxWidth: .infinity)
+                .background(Color.white)
+                .cornerRadius(16)
+
+                Button {
+
+                    showPicker = true
+
+                } label: {
+
+                    HStack(spacing: 8) {
+
+                        Image(systemName: "arrow.up.doc.fill")
+
+                        Text("Upload")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(AppColors.blue)
+                    .cornerRadius(12)
+                }
+            }
+
+            if reportsVM.reports.isEmpty {
+
+                EmptyStateView(
+                    icon: "tray",
+                    title: "Historial vacío",
+                    message: "Aún no hay archivos exportados."
+                )
+
+            } else {
+
+                VStack(spacing: 14) {
+
+                    ForEach(reportsVM.reports) { item in
+
+                        RoundedContainer {
+
+                            VStack(
+                                alignment: .leading,
+                                spacing: 8
+                            ) {
+
+                                Text("Analysis Report")
+                                    .font(.headline)
+
+                                Text(item.createdAt)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(
+                                        AppColors.secondaryText
+                                    )
+
+                                Text(item.analysisReport)
+                                    .font(.caption)
+
+                                Text(item.transferReport)
+                                    .font(.caption)
+                                    .foregroundColor(
+                                        AppColors.secondaryText
+                                    )
+                            }
+                            .padding()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var configurationSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            Text("Configuración")
+                .font(
+                    .system(
+                        size: 24,
+                        weight: .bold
+                    )
+                )
+
+            configurationRow(
+                icon: "gearshape",
+                title: "Programación",
+                subtitle: "Todos los días a las 08:30"
+            )
+
+            configurationRow(
+                icon: "bell",
+                title: "Notificaciones",
+                subtitle: "Recibir cuando el reporte esté listo"
+            )
+        }
+    }
+
+    func configurationRow(
+        icon: String,
+        title: String,
+        subtitle: String
+    ) -> some View {
+
+        HStack(spacing: 16) {
+
+            ZStack {
+
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(AppColors.blue.opacity(0.10))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .foregroundColor(AppColors.blue)
+            }
+
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
+
+                Text(title)
+                    .font(
+                        .system(
+                            size: 16,
+                            weight: .medium
+                        )
+                    )
+
+                Text(subtitle)
+                    .font(.system(size: 13))
+                    .foregroundColor(
+                        AppColors.secondaryText
+                    )
+            }
+
+            Spacer()
+
+            Text("Activo")
+                .font(
+                    .system(
+                        size: 12,
+                        weight: .medium
+                    )
+                )
+                .foregroundColor(AppColors.green)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    AppColors.green.opacity(0.12)
+                )
+                .cornerRadius(12)
+
+            Image(systemName: "chevron.right")
+                .foregroundColor(
+                    AppColors.secondaryText
+                )
+        }
+        .padding(18)
+        .background(Color.white)
+        .cornerRadius(22)
+    }
 }
 
-struct HomeView_Previews: PreviewProvider {
+struct ReportsView_Previews: PreviewProvider {
 
     static var previews: some View {
-
-        HomeView()
+        ReportsView()
     }
 }

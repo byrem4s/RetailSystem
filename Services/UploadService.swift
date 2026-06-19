@@ -8,14 +8,17 @@ final class UploadService {
 
         let boundary = UUID().uuidString
 
+        guard let uploadURL = URL(
+            string:
+            Environment.baseURL
+            + "/uploads/sales"
+        ) else {
+
+            throw NetworkError.invalidURL
+        }
+
         var request = URLRequest(
-            url: URL(
-                url: URL(
-                    string:
-                    Environment.baseURL
-                    + "/uploads/sales"
-                )!
-            )!
+            url: uploadURL
         )
 
         request.httpMethod = "POST"

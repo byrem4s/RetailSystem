@@ -1,52 +1,38 @@
 import Foundation
-import Combine
-
 
 @MainActor
-final class HomeViewModel:
-ObservableObject {
+final class HomeViewModel: ObservableObject {
 
-    @Published var homeData:
-    HomeDTO?
+    @Published var homeData: HomeDTO?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
 
-    @Published var warnings:
-    [WarningModel] = []
+    private let service = HomeService()
 
-    @Published var exports:
-    [ExportSnapshotModel] = []
+    var userName: String {
+        homeData?.user.name ?? "Equipo"
+    }
 
-    @Published var isLoading =
-    false
+    var userBranch: String {
+        homeData?.user.branch ?? "Todas las sucursales"
+    }
 
-    @Published var errorMessage:
-    String?
-
-    private let service =
-    HomeService()
+    var recentActivity: [HomeRecentActivityDTO] {
+        homeData?.recentActivity ?? []
+    }
 
     func loadData() async {
 
         isLoading = true
-
         errorMessage = nil
 
         do {
 
-            let data =
-            try await service.fetchHomeData()
-
-            homeData = data
-
-            warnings =
-            try await service.fetchWarnings()
-
-            exports =
-            try await service.fetchExports()
+            homeData = try await service.fetchHomeData()
 
         } catch {
 
-            errorMessage =
-            error.localizedDescription
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false

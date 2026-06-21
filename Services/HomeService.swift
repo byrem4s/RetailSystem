@@ -2,39 +2,13 @@ import Foundation
 
 final class HomeService {
 
+    private let api = APIClient.shared
+
     func fetchHomeData() async throws -> HomeDTO {
 
-        return try await APIClient.shared.fetch(
-
-            endpoint: "/system/health",
-
+        try await api.fetch(
+            endpoint: Endpoints.home,
             responseType: HomeDTO.self
         )
     }
-
-    func fetchWarnings() async throws
-    -> [WarningModel] {
-
-    return try await APIClient.shared.fetch(
-
-        endpoint: "/system/warnings",
-
-        responseType: [WarningModel].self
-    )
-
-    }
-
-    func fetchExports()
-        async throws -> [ExportSnapshotModel] {
-
-            return try await APIClient.shared.fetch(
-
-                endpoint:
-                "/exports/history",
-
-                responseType:
-                [ExportSnapshotModel].self
-            )
-        }
-
 }

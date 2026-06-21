@@ -1,17 +1,12 @@
 import Foundation
 
-
 final class ReportsService {
 
-    func fetchReports()
-    async throws -> [ExportSnapshotModel] {
+    func fetchReports() async throws -> ReportsResponseDTO {
 
-        return try await APIClient.shared.fetch(
-
-            endpoint: "/exports/history",
-
-            responseType:
-            [ExportSnapshotModel].self
+        try await APIClient.shared.fetch(
+            endpoint: "/reports",
+            responseType: ReportsResponseDTO.self
         )
     }
 }

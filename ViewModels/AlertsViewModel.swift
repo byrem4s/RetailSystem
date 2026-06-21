@@ -1,64 +1,60 @@
 import Foundation
-import Combine
 
 @MainActor
 final class AlertsViewModel: ObservableObject {
 
-    @Published var alerts: [WarningModel] = []
-
+    @Published var response: AlertsResponseDTO?
     @Published var isLoading = false
-
     @Published var errorMessage: String?
 
     private let service = AlertsService()
 
-    var criticalAlerts: [WarningModel] {
+    var alerts: [AlertDTO] {
+        response?.alerts ?? []
+    }
 
-        alerts.filter { item in
-
-            let text = item.message.lowercased()
-
-            return text.contains("missing")
-            || text.contains("outdated")
-            || text.contains("error")
-            || text.contains("failed")
+    var criticalAlerts: [AlertDTO] {
+        alerts.filter {
+            $0.priority.uppercased() == "CRITICAL"
         }
     }
 
-    var mediumAlerts: [WarningModel] {
+    var highAlerts: [AlertDTO] {
+        alerts.filter {
+            $0.priority.uppercased() == "HIGH"
+        }
+    }
 
-        alerts.filter { item in
-
-            !criticalAlerts.contains { critical in
-                critical.id == item.id
-            }
+    var mediumAlerts: [AlertDTO] {
+        alerts.filter {
+            $0.priority.uppercased() == "MEDIUM"
         }
     }
 
     var criticalCount: Int {
+        response?.summary.critical ?? 0
+    }
 
-        criticalAlerts.count
+    var highCount: Int {
+        response?.summary.high ?? 0
     }
 
     var mediumCount: Int {
-
-        mediumAlerts.count
+        response?.summary.medium ?? 0
     }
 
     var totalCount: Int {
-
-        alerts.count
+        response?.summary.total ?? 0
     }
 
     func loadAlerts() async {
 
         isLoading = true
-
         errorMessage = nil
 
         do {
 
-            alerts = try await service.fetchAlerts()
+            response = try await service.fetchAlerts()
 
         } catch {
 

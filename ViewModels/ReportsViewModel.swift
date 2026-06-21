@@ -1,35 +1,46 @@
 import Foundation
-import Combine
 
 @MainActor
-final class ReportsViewModel:
-ObservableObject {
+final class ReportsViewModel: ObservableObject {
 
-    @Published var reports:
-    [ExportSnapshotModel] = []
+    @Published var response: ReportsResponseDTO?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
 
-    @Published var isLoading =
-    false
+    private let service = ReportsService()
 
-    @Published var errorMessage:
-    String?
+    var latest: ReportDTO? {
+        response?.latest
+    }
 
-    private let service =
-    ReportsService()
+    var history: [ReportDTO] {
+        response?.history ?? []
+    }
+
+    var configuration: ReportsConfigurationDTO? {
+        response?.configuration
+    }
+
+    var scheduleText: String {
+        configuration?.schedule ?? "No configurado"
+    }
+
+    var notificationsEnabled: Bool {
+        configuration?.notifications ?? false
+    }
 
     func loadReports() async {
 
         isLoading = true
+        errorMessage = nil
 
         do {
 
-            reports =
-            try await service.fetchReports()
+            response = try await service.fetchReports()
 
         } catch {
 
-            errorMessage =
-            error.localizedDescription
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false

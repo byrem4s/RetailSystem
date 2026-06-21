@@ -1,26 +1,39 @@
 import Foundation
 
+struct ReportsResponseDTO: Decodable {
 
-struct ExportSnapshotModel:
-Decodable, Identifiable {
+    let latest: ReportDTO?
+    let history: [ReportDTO]
+    let configuration: ReportsConfigurationDTO
+}
 
-    let id = UUID()
+struct ReportDTO: Decodable, Identifiable {
 
-    let analysisReport: String
-
-    let transferReport: String
-
+    let id: String
+    let fileName: String
     let createdAt: String
+    let type: String
+    let rows: String
+    let sheets: String
+    let size: String
+    let status: String
+    let filePath: String
 
     enum CodingKeys: String, CodingKey {
-
-        case analysisReport =
-        "analysis_report"
-
-        case transferReport =
-        "transfer_report"
-
-        case createdAt =
-        "created_at"
+        case id
+        case fileName = "file_name"
+        case createdAt = "created_at"
+        case type
+        case rows
+        case sheets
+        case size
+        case status
+        case filePath = "file_path"
     }
+}
+
+struct ReportsConfigurationDTO: Decodable {
+
+    let schedule: String
+    let notifications: Bool
 }

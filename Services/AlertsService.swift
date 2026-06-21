@@ -1,15 +1,12 @@
 import Foundation
 
-
 final class AlertsService {
 
-    func fetchAlerts() async throws -> [WarningModel] {
+    func fetchAlerts() async throws -> AlertsResponseDTO {
 
-        return try await APIClient.shared.fetch(
-
-            endpoint: "/system/warnings",
-
-            responseType: [WarningModel].self
+        try await APIClient.shared.fetch(
+            endpoint: "/alerts",
+            responseType: AlertsResponseDTO.self
         )
     }
 }

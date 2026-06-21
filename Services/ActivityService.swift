@@ -2,11 +2,11 @@ import Foundation
 
 final class ActivityService {
 
-    func fetchActivity() async throws -> [ActivityDTO] {
+    func fetchActivity() async throws -> ActivityResponseDTO {
 
-        return try await APIClient.shared.fetch(
+        try await APIClient.shared.fetch(
             endpoint: Endpoints.activity,
-            responseType: [ActivityDTO].self
+            responseType: ActivityResponseDTO.self
         )
     }
 }

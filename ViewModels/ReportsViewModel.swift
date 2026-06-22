@@ -1,10 +1,12 @@
 import Foundation
+import Combine
 
 @MainActor
 final class ReportsViewModel: ObservableObject {
 
     @Published var response: ReportsResponseDTO?
     @Published var isLoading = false
+    @Published var isFileLoading = false
     @Published var errorMessage: String?
 
     private let service = ReportsService()
@@ -44,5 +46,31 @@ final class ReportsViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func downloadReportFile(
+        _ report: ReportDTO
+    ) async -> URL? {
+
+        isFileLoading = true
+        errorMessage = nil
+
+        do {
+
+            let url = try await service.downloadReport(
+                report
+            )
+
+            isFileLoading = false
+
+            return url
+
+        } catch {
+
+            errorMessage = error.localizedDescription
+            isFileLoading = false
+
+            return nil
+        }
     }
 }

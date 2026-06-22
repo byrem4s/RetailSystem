@@ -4,6 +4,10 @@ struct LatestReportCard: View {
 
     let item: ReportModel
 
+    let onPreview: () -> Void
+    let onShare: () -> Void
+    let onDownload: () -> Void
+
     var body: some View {
 
         VStack(
@@ -24,16 +28,9 @@ struct LatestReportCard: View {
                 spacing: 18
             ) {
 
-                ZStack {
-
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.green.opacity(0.10))
-                        .frame(width: 64, height: 64)
-
-                    Image(systemName: "doc.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(.green)
-                }
+                ExcelFileIcon(
+                    size: 66
+                )
 
                 VStack(
                     alignment: .leading,
@@ -47,6 +44,8 @@ struct LatestReportCard: View {
                                 weight: .semibold
                             )
                         )
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
 
                     Text(
                         "\(item.date) • \(item.type)"
@@ -56,12 +55,7 @@ struct LatestReportCard: View {
                         AppColors.secondaryText
                     )
 
-                    HStack(spacing: 24) {
-
-                        metricBlock(
-                            value: item.rows,
-                            title: "Filas"
-                        )
+                    HStack(spacing: 28) {
 
                         metricBlock(
                             value: item.sheets,
@@ -76,40 +70,31 @@ struct LatestReportCard: View {
                 }
             }
 
-            HStack(spacing: 12) {
+            VStack(spacing: 10) {
 
-                actionButton(
-                    title: "Vista previa",
-                    icon: "eye"
-                )
+                HStack(spacing: 10) {
 
-                actionButton(
-                    title: "Compartir",
-                    icon: "square.and.arrow.up"
-                )
-
-                Button {
-
-                } label: {
-
-                    HStack(spacing: 8) {
-
-                        Image(systemName: "arrow.down")
-
-                        Text("Descargar")
-                    }
-                    .font(
-                        .system(
-                            size: 15,
-                            weight: .semibold
-                        )
+                    reportActionButton(
+                        title: "Vista previa",
+                        icon: "eye",
+                        primary: false,
+                        action: onPreview
                     )
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(AppColors.primaryText)
-                    .cornerRadius(16)
+
+                    reportActionButton(
+                        title: "Compartir",
+                        icon: "square.and.arrow.up",
+                        primary: false,
+                        action: onShare
+                    )
                 }
+
+                reportActionButton(
+                    title: "Descargar",
+                    icon: "arrow.down.doc",
+                    primary: true,
+                    action: onDownload
+                )
             }
         }
         .padding(18)
@@ -134,6 +119,8 @@ struct LatestReportCard: View {
                         weight: .bold
                     )
                 )
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             Text(title)
                 .font(.system(size: 12))
@@ -142,40 +129,89 @@ struct LatestReportCard: View {
                 )
         }
     }
+}
 
-    func actionButton(
-        title: String,
-        icon: String
-    ) -> some View {
+struct ExcelFileIcon: View {
 
-        Button {
+    let size: CGFloat
 
-        } label: {
+    var body: some View {
 
-            HStack(spacing: 8) {
+        ZStack {
 
-                Image(systemName: icon)
+            RoundedRectangle(cornerRadius: size * 0.28)
+                .fill(AppColors.green.opacity(0.12))
+                .frame(width: size, height: size)
 
-                Text(title)
-            }
-            .font(
-                .system(
-                    size: 15,
-                    weight: .medium
-                )
-            )
-            .foregroundColor(
-                AppColors.primaryText
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        AppColors.border,
-                        lineWidth: 1
+            VStack(spacing: 5) {
+
+                Image(systemName: "tablecells.fill")
+                    .font(
+                        .system(
+                            size: size * 0.34,
+                            weight: .bold
+                        )
                     )
-            )
+                    .foregroundColor(AppColors.green)
+
+                Text("XLSX")
+                    .font(
+                        .system(
+                            size: size * 0.16,
+                            weight: .bold
+                        )
+                    )
+                    .foregroundColor(AppColors.green)
+            }
         }
+    }
+}
+
+func reportActionButton(
+    title: String,
+    icon: String,
+    primary: Bool,
+    action: @escaping () -> Void
+) -> some View {
+
+    Button {
+
+        action()
+
+    } label: {
+
+        HStack(spacing: 8) {
+
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .foregroundColor(
+            primary
+            ? .white
+            : AppColors.primaryText
+        )
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity)
+        .frame(height: 46)
+        .background(
+            primary
+            ? AppColors.primaryText
+            : Color.white
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    primary
+                    ? Color.clear
+                    : Color.gray.opacity(0.18),
+                    lineWidth: 1
+                )
+        )
+        .cornerRadius(16)
     }
 }

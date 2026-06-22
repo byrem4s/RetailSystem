@@ -4,7 +4,17 @@ struct HomeView: View {
 
     @StateObject private var vm = HomeViewModel()
 
-    private var summaryKPIs: [KPIModel] {
+    @State private var showAllSummaryKPIs = false
+
+    let onOpenAlerts: () -> Void
+
+    init(
+        onOpenAlerts: @escaping () -> Void = {}
+    ) {
+        self.onOpenAlerts = onOpenAlerts
+    }
+
+    private var primarySummaryKPIs: [KPIModel] {
 
         [
             .init(
@@ -38,6 +48,68 @@ struct HomeView: View {
         ]
     }
 
+    private var extraSummaryKPIs: [KPIModel] {
+
+        [
+            .init(
+                icon: "shippingbox.fill",
+                color: AppColors.blue,
+                value: valueText(vm.homeData?.summary.suggestedUnits),
+                title: "Unidades",
+                subtitle: "sugeridas"
+            ),
+            .init(
+                icon: "checkmark.seal.fill",
+                color: AppColors.green,
+                value: valueText(vm.homeData?.summary.coveredUnits),
+                title: "Unidades",
+                subtitle: "cubiertas"
+            ),
+            .init(
+                icon: "clock.badge.exclamationmark.fill",
+                color: AppColors.orange,
+                value: valueText(vm.homeData?.summary.pendingUnits),
+                title: "Unidades",
+                subtitle: "pendientes"
+            ),
+            .init(
+                icon: "percent",
+                color: AppColors.green,
+                value: percentText(vm.homeData?.summary.coverageRate),
+                title: "Cobertura",
+                subtitle: "general"
+            ),
+            .init(
+                icon: "list.bullet.rectangle.fill",
+                color: AppColors.blue,
+                value: valueText(vm.homeData?.summary.detectedCases),
+                title: "Casos",
+                subtitle: "detectados"
+            ),
+            .init(
+                icon: "building.2.crop.circle.fill",
+                color: AppColors.red,
+                value: valueText(vm.homeData?.summary.branchesWithRisk),
+                title: "Sucursales",
+                subtitle: "con riesgo"
+            ),
+            .init(
+                icon: "clock.fill",
+                color: AppColors.orange,
+                value: vm.homeData?.summary.lastUpdate ?? "-",
+                title: "Última",
+                subtitle: "actualización"
+            )
+        ]
+    }
+
+    private var visibleSummaryKPIs: [KPIModel] {
+
+        showAllSummaryKPIs
+        ? primarySummaryKPIs + extraSummaryKPIs
+        : primarySummaryKPIs
+    }
+
     var body: some View {
 
         ZStack {
@@ -61,7 +133,7 @@ struct HomeView: View {
                 }
                 .padding(.top, 28)
                 .padding(18)
-                .padding(.bottom, 120)
+                .padding(.bottom, 105)
             }
 
             if vm.isLoading {
@@ -123,16 +195,15 @@ struct HomeView: View {
 
             } label: {
 
-                ZStack {
-
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: "bell.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(AppColors.primaryText)
-                }
+                Image(systemName: "bell")
+                    .font(
+                        .system(
+                            size: 23,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundColor(AppColors.primaryText)
+                    .frame(width: 44, height: 44)
             }
         }
     }
@@ -165,21 +236,58 @@ struct HomeView: View {
             spacing: 14
         ) {
 
-            SectionHeader(
+            sectionHeader(
                 title: "Resumen general",
-                actionTitle: nil
-            )
+                actionTitle: showAllSummaryKPIs ? nil : "Ver más"
+            ) {
+
+                withAnimation(.easeInOut) {
+                    showAllSummaryKPIs = true
+                }
+            }
 
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
+                    GridItem(
+                        .adaptive(
+                            minimum: 145,
+                            maximum: 165
+                        ),
+                        spacing: 12
+                    )
                 ],
-                spacing: 14
+                alignment: .center,
+                spacing: 12
             ) {
 
-                ForEach(summaryKPIs) { item in
-                    KPICard(item: item)
+                ForEach(visibleSummaryKPIs) { item in
+
+                    summaryKPICard(item)
+                }
+            }
+
+            if showAllSummaryKPIs {
+
+                Button {
+
+                    withAnimation(.easeInOut) {
+                        showAllSummaryKPIs = false
+                    }
+
+                } label: {
+
+                    HStack(spacing: 6) {
+
+                        Text("Mostrar menos")
+
+                        Image(systemName: "chevron.up")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.blue)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.white)
+                    .cornerRadius(16)
                 }
             }
         }
@@ -192,10 +300,13 @@ struct HomeView: View {
             spacing: 14
         ) {
 
-            SectionHeader(
+            sectionHeader(
                 title: "Alertas activas",
-                actionTitle: nil
-            )
+                actionTitle: "Ver más"
+            ) {
+
+                onOpenAlerts()
+            }
 
             HStack(spacing: 10) {
 
@@ -256,6 +367,96 @@ struct HomeView: View {
         }
     }
 
+    private func sectionHeader(
+        title: String,
+        actionTitle: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+
+        HStack {
+
+            Text(title)
+                .font(.title3)
+                .fontWeight(.bold)
+
+            Spacer()
+
+            if let actionTitle {
+
+                Button {
+
+                    action()
+
+                } label: {
+
+                    HStack(spacing: 4) {
+
+                        Text(actionTitle)
+
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.blue)
+                }
+            }
+        }
+    }
+
+    private func summaryKPICard(
+        _ item: KPIModel
+    ) -> some View {
+
+        VStack(
+            alignment: .center,
+            spacing: 12
+        ) {
+
+            ZStack {
+
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(item.color.opacity(0.12))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: item.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(item.color)
+            }
+
+            Text(item.value)
+                .font(.system(size: 27, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            VStack(spacing: 3) {
+
+                Text(item.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.primaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+
+                Text(item.subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(AppColors.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+            }
+        }
+        .padding(14)
+        .frame(
+            minHeight: 145
+        )
+        .frame(
+            maxWidth: .infinity,
+            alignment: .center
+        )
+        .background(Color.white)
+        .cornerRadius(22)
+    }
+
     private func riskCard(
         icon: String,
         title: String,
@@ -264,7 +465,7 @@ struct HomeView: View {
     ) -> some View {
 
         VStack(
-            alignment: .leading,
+            alignment: .center,
             spacing: 10
         ) {
 
@@ -285,6 +486,7 @@ struct HomeView: View {
                         weight: .bold
                     )
                 )
+                .multilineTextAlignment(.center)
 
             Text(title)
                 .font(
@@ -296,9 +498,10 @@ struct HomeView: View {
                 .foregroundColor(AppColors.primaryText)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .background(Color.white)
         .cornerRadius(22)
     }
@@ -432,6 +635,17 @@ struct HomeView: View {
         }
 
         return "\(value)"
+    }
+
+    private func percentText(
+        _ value: Int?
+    ) -> String {
+
+        guard let value else {
+            return "-"
+        }
+
+        return "\(value)%"
     }
 }
 

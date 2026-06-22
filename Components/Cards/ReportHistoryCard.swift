@@ -4,6 +4,10 @@ struct ReportHistoryCard: View {
 
     let item: ReportModel
 
+    let onPreview: () -> Void
+    let onShare: () -> Void
+    let onDownload: () -> Void
+
     var body: some View {
 
         HStack(
@@ -11,20 +15,13 @@ struct ReportHistoryCard: View {
             spacing: 14
         ) {
 
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.green.opacity(0.10))
-                    .frame(width: 62, height: 62)
-
-                Image(systemName: "doc.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.green)
-            }
+            ExcelFileIcon(
+                size: 62
+            )
 
             VStack(
                 alignment: .leading,
-                spacing: 10
+                spacing: 12
             ) {
 
                 HStack(alignment: .top) {
@@ -41,6 +38,8 @@ struct ReportHistoryCard: View {
                                     weight: .semibold
                                 )
                             )
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
 
                         Text(
                             "\(item.date) • \(item.type)"
@@ -69,12 +68,12 @@ struct ReportHistoryCard: View {
                         .cornerRadius(12)
                 }
 
-                HStack(spacing: 14) {
+                HStack(spacing: 8) {
 
-                    Text("\(item.rows) filas")
-                    Text("•")
                     Text("\(item.sheets) hojas")
+
                     Text("•")
+
                     Text(item.size)
                 }
                 .font(.system(size: 13))
@@ -82,16 +81,24 @@ struct ReportHistoryCard: View {
                     AppColors.secondaryText
                 )
 
-                HStack {
+                HStack(spacing: 10) {
+
+                    compactActionButton(
+                        icon: "eye",
+                        action: onPreview
+                    )
+
+                    compactActionButton(
+                        icon: "square.and.arrow.up",
+                        action: onShare
+                    )
+
+                    compactActionButton(
+                        icon: "arrow.down.doc",
+                        action: onDownload
+                    )
 
                     Spacer()
-
-                    HStack(spacing: 12) {
-
-                        actionButton(icon: "square.and.arrow.up")
-
-                        actionButton(icon: "arrow.down")
-                    }
                 }
             }
         }
@@ -100,24 +107,28 @@ struct ReportHistoryCard: View {
         .cornerRadius(24)
     }
 
-    func actionButton(
-        icon: String
+    func compactActionButton(
+        icon: String,
+        action: @escaping () -> Void
     ) -> some View {
 
         Button {
+
+            action()
 
         } label: {
 
             ZStack {
 
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 13)
                     .stroke(
-                        AppColors.border,
+                        Color.gray.opacity(0.18),
                         lineWidth: 1
                     )
-                    .frame(width: 42, height: 42)
+                    .frame(width: 44, height: 42)
 
                 Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(
                         AppColors.primaryText
                     )

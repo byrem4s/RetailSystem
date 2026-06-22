@@ -154,7 +154,7 @@ struct ActivityView: View {
                     Text(filter)
                         .font(
                             .system(
-                                size: 13,
+                                size: 12,
                                 weight: .semibold
                             )
                         )
@@ -163,20 +163,25 @@ struct ActivityView: View {
                             ? AppColors.blue
                             : AppColors.primaryText
                         )
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity
+                        )
                         .background(
                             Group {
                                 if selectedFilter == filter {
                                     RoundedRectangle(cornerRadius: 16)
                                         .fill(Color.white)
-                                        .padding(4)
                                 }
                             }
                         )
                 }
             }
         }
+        .frame(height: 42)
+        .padding(4)
         .background(Color.gray.opacity(0.08))
         .cornerRadius(20)
     }
@@ -189,8 +194,7 @@ struct ActivityView: View {
                 icon: "arrow.left.arrow.right",
                 color: AppColors.green,
                 value: "\(vm.movementsCount)",
-                title: "Movimientos",
-                subtitle: nil
+                title: "Movimientos"
             )
 
             verticalDivider
@@ -199,8 +203,7 @@ struct ActivityView: View {
                 icon: "checkmark.rectangle",
                 color: AppColors.blue,
                 value: "\(vm.completedCount)",
-                title: "Completos",
-                subtitle: nil
+                title: "Completos"
             )
 
             verticalDivider
@@ -209,8 +212,7 @@ struct ActivityView: View {
                 icon: "chart.pie",
                 color: AppColors.orange,
                 value: "\(vm.partialCount)",
-                title: "Parciales",
-                subtitle: nil
+                title: "Parciales"
             )
 
             verticalDivider
@@ -219,11 +221,10 @@ struct ActivityView: View {
                 icon: "xmark.circle",
                 color: AppColors.red,
                 value: "\(vm.withoutReplenishmentCount)",
-                title: "Sin reposición",
-                subtitle: nil
+                title: "Sin reposición"
             )
         }
-        .padding(16)
+        .padding(14)
         .background(Color.white)
         .cornerRadius(24)
     }
@@ -232,20 +233,19 @@ struct ActivityView: View {
 
         Rectangle()
             .fill(Color.gray.opacity(0.15))
-            .frame(width: 1, height: 86)
+            .frame(width: 1, height: 92)
     }
 
     private func summaryCard(
         icon: String,
         color: Color,
         value: String,
-        title: String,
-        subtitle: String?
+        title: String
     ) -> some View {
 
         VStack(
-            alignment: .leading,
-            spacing: 10
+            alignment: .center,
+            spacing: 8
         ) {
 
             ZStack {
@@ -255,32 +255,33 @@ struct ActivityView: View {
                     .frame(width: 42, height: 42)
 
                 Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(color)
             }
+            .frame(height: 42)
 
             Text(value)
                 .font(
                     .system(
-                        size: 26,
+                        size: 24,
                         weight: .bold
                     )
                 )
+                .foregroundColor(AppColors.primaryText)
+                .frame(height: 28)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
 
             Text(title)
-                .font(.system(size: 12))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(AppColors.primaryText)
+                .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .minimumScaleFactor(0.8)
-
-            if let subtitle {
-
-                Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundColor(AppColors.secondaryText)
-            }
+                .minimumScaleFactor(0.72)
+                .frame(height: 30, alignment: .top)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        .frame(height: 112)
     }
 
     private var activityListSection: some View {
@@ -325,95 +326,89 @@ struct ActivityView: View {
 
         let color = statusColor(item.status)
 
-        return HStack(
-            alignment: .top,
-            spacing: 10
+        return ZStack(
+            alignment: .leading
         ) {
+
+            VStack(
+                alignment: .leading,
+                spacing: 14
+            ) {
+
+                HStack(
+                    alignment: .top,
+                    spacing: 14
+                ) {
+
+                    ZStack {
+
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(color.opacity(0.12))
+                            .frame(width: 62, height: 62)
+
+                        Image(systemName: iconForActivity(item))
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(color)
+                    }
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
+
+                        Text(typeLabel(item.type))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(color)
+
+                        Text(item.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.primaryText)
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+
+                        Text("\(item.origin) → \(item.destination)")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.secondaryText)
+
+                        statusBadge(item.status)
+                    }
+
+                    Spacer()
+
+                    VStack(
+                        alignment: .trailing,
+                        spacing: 8
+                    ) {
+
+                        Text(item.time)
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.secondaryText)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.secondaryText)
+                    }
+                }
+
+                reasonBox(item)
+
+                routeBox(item)
+            }
+            .padding(16)
+            .padding(.leading, 10)
+            .background(Color.white)
+            .cornerRadius(24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color.gray.opacity(0.10))
+            )
 
             Circle()
                 .fill(color)
                 .frame(width: 7, height: 7)
-                .padding(.top, 36)
-
-            VStack(
-                alignment: .leading,
-                spacing: 0
-            ) {
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 14
-                ) {
-
-                    HStack(
-                        alignment: .top,
-                        spacing: 14
-                    ) {
-
-                        ZStack {
-
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(color.opacity(0.12))
-                                .frame(width: 62, height: 62)
-
-                            Image(systemName: iconForActivity(item))
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(color)
-                        }
-
-                        VStack(
-                            alignment: .leading,
-                            spacing: 6
-                        ) {
-
-                            Text(typeLabel(item.type))
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(color)
-
-                            Text(item.title)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(AppColors.primaryText)
-                                .fixedSize(
-                                    horizontal: false,
-                                    vertical: true
-                                )
-
-                            Text("\(item.origin) → \(item.destination)")
-                                .font(.system(size: 13))
-                                .foregroundColor(AppColors.secondaryText)
-
-                            statusBadge(item.status)
-                        }
-
-                        Spacer()
-
-                        VStack(
-                            alignment: .trailing,
-                            spacing: 8
-                        ) {
-
-                            Text(item.time)
-                                .font(.system(size: 12))
-                                .foregroundColor(AppColors.secondaryText)
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(AppColors.secondaryText)
-                        }
-                    }
-
-                    reasonBox(item)
-
-                    routeBox(item)
-                }
-                .padding(16)
-                .background(Color.white)
-                .cornerRadius(24)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(Color.gray.opacity(0.10))
-                )
-            }
+                .offset(x: 0, y: -34)
         }
     }
 

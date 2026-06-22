@@ -3,32 +3,34 @@ import SwiftUI
 struct BranchesView: View {
 
     @StateObject private var vm = BranchesViewModel()
-    @State private var selectedFilter = "Ranking de salud"
+
+    @State private var selectedFilter = "Ranking"
+    @State private var showAllBranches = false
 
     private let filters = [
-        "Ranking de salud",
-        "Riesgo de quiebre",
+        "Ranking",
+        "Quiebre",
         "Sobrestock",
-        "Sin rotación"
+        "Sin rot."
     ]
 
     private var filteredRanking: [BranchRankingDTO] {
 
         switch selectedFilter {
 
-        case "Riesgo de quiebre":
+        case "Quiebre":
             return vm.ranking.sorted {
-                $0.critical > $1.critical
+                $0.issues.breakRisk > $1.issues.breakRisk
             }
 
         case "Sobrestock":
             return vm.ranking.sorted {
-                $0.medium > $1.medium
+                $0.issues.overstock > $1.issues.overstock
             }
 
-        case "Sin rotación":
+        case "Sin rot.":
             return vm.ranking.sorted {
-                $0.high > $1.high
+                $0.issues.noRotation > $1.issues.noRotation
             }
 
         default:
@@ -36,6 +38,13 @@ struct BranchesView: View {
                 $0.health > $1.health
             }
         }
+    }
+
+    private var visibleRanking: [BranchRankingDTO] {
+
+        showAllBranches
+        ? filteredRanking
+        : Array(filteredRanking.prefix(4))
     }
 
     var body: some View {
@@ -61,7 +70,7 @@ struct BranchesView: View {
                 }
                 .padding(.top, 28)
                 .padding(18)
-                .padding(.bottom, 120)
+                .padding(.bottom, 105)
             }
 
             if vm.isLoading {
@@ -167,8 +176,8 @@ struct BranchesView: View {
                 icon: "waveform.path.ecg",
                 color: healthColor(vm.averageHealth),
                 value: "\(vm.averageHealth)%",
-                title: "Salud promedio",
-                subtitle: "general"
+                title: "Salud",
+                subtitle: "promedio"
             )
 
             verticalDivider
@@ -177,8 +186,8 @@ struct BranchesView: View {
                 icon: "exclamationmark.triangle.fill",
                 color: AppColors.red,
                 value: "\(vm.highRisk)",
-                title: "Con riesgo alto",
-                subtitle: "casos"
+                title: "Sucursales",
+                subtitle: "con riesgo"
             )
 
             verticalDivider
@@ -191,7 +200,7 @@ struct BranchesView: View {
                 subtitle: "hoy"
             )
         }
-        .padding(16)
+        .padding(14)
         .background(Color.white)
         .cornerRadius(24)
     }
@@ -200,7 +209,7 @@ struct BranchesView: View {
 
         Rectangle()
             .fill(Color.gray.opacity(0.15))
-            .frame(width: 1, height: 86)
+            .frame(width: 1, height: 96)
     }
 
     private func summaryCard(
@@ -212,8 +221,8 @@ struct BranchesView: View {
     ) -> some View {
 
         VStack(
-            alignment: .leading,
-            spacing: 10
+            alignment: .center,
+            spacing: 8
         ) {
 
             ZStack {
@@ -223,29 +232,37 @@ struct BranchesView: View {
                     .frame(width: 42, height: 42)
 
                 Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(color)
             }
+            .frame(height: 42)
 
             Text(value)
-                .font(
-                    .system(
-                        size: 24,
-                        weight: .bold
-                    )
-                )
+                .font(.system(size: 23, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(height: 27)
 
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(AppColors.primaryText)
+                .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.72)
+                .frame(height: 28, alignment: .top)
 
             Text(subtitle)
-                .font(.system(size: 11))
+                .font(.system(size: 10))
                 .foregroundColor(AppColors.secondaryText)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(height: 14)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        .frame(height: 122)
+        .padding(.horizontal, 4)
     }
 
     private var filtersSection: some View {
@@ -257,44 +274,46 @@ struct BranchesView: View {
                 Button {
 
                     selectedFilter = filter
+                    showAllBranches = false
 
                 } label: {
 
                     Text(filter)
-                        .font(
-                            .system(
-                                size: 12,
-                                weight: .semibold
-                            )
-                        )
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(
                             selectedFilter == filter
                             ? AppColors.blue
                             : AppColors.primaryText
                         )
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity
+                        )
                         .background(
                             Group {
                                 if selectedFilter == filter {
                                     RoundedRectangle(cornerRadius: 16)
                                         .fill(Color.white)
-                                        .padding(4)
                                 }
                             }
                         )
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
                 }
             }
         }
+        .frame(height: 42)
+        .padding(4)
         .background(Color.gray.opacity(0.08))
         .cornerRadius(20)
     }
 
     private var rankingSection: some View {
 
-        VStack(spacing: 10) {
+        VStack(
+            alignment: .leading,
+            spacing: 12
+        ) {
 
             if filteredRanking.isEmpty {
 
@@ -306,16 +325,52 @@ struct BranchesView: View {
 
             } else {
 
-                ForEach(
-                    Array(filteredRanking.enumerated()),
-                    id: \.element.id
-                ) { index, branch in
+                VStack(spacing: 10) {
 
-                    rankingRow(
-                        branch,
-                        position: index + 1,
-                        selected: branch.id == vm.selectedBranch?.id
-                    )
+                    ForEach(
+                        Array(visibleRanking.enumerated()),
+                        id: \.element.id
+                    ) { index, branch in
+
+                        rankingRow(
+                            branch,
+                            position: index + 1,
+                            selected: branch.id == vm.selectedBranchID
+                        )
+                    }
+                }
+
+                if filteredRanking.count > 4 {
+
+                    Button {
+
+                        withAnimation(.easeInOut) {
+                            showAllBranches.toggle()
+                        }
+
+                    } label: {
+
+                        HStack(spacing: 6) {
+
+                            Text(
+                                showAllBranches
+                                ? "Mostrar menos"
+                                : "Ver todas las sucursales (22)"
+                            )
+
+                            Image(
+                                systemName: showAllBranches
+                                ? "chevron.up"
+                                : "chevron.down"
+                            )
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(AppColors.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                    }
                 }
             }
         }
@@ -327,113 +382,155 @@ struct BranchesView: View {
         selected: Bool
     ) -> some View {
 
-        HStack(spacing: 14) {
+        Button {
 
-            Text("\(position)")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(AppColors.secondaryText)
-                .frame(width: 22)
-
-            ZStack {
-
-                Circle()
-                    .stroke(
-                        healthColor(item.health).opacity(0.25),
-                        lineWidth: 5
-                    )
-                    .frame(width: 48, height: 48)
-
-                Circle()
-                    .trim(
-                        from: 0,
-                        to: CGFloat(item.health) / 100
-                    )
-                    .stroke(
-                        healthColor(item.health),
-                        style: StrokeStyle(
-                            lineWidth: 5,
-                            lineCap: .round
-                        )
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 48, height: 48)
-
-                Text("\(item.health)%")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(healthColor(item.health))
+            Task {
+                await vm.selectBranch(
+                    item.id
+                )
             }
+
+        } label: {
 
             VStack(
                 alignment: .leading,
-                spacing: 4
+                spacing: 12
             ) {
 
-                Text(item.branch)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
+                HStack(spacing: 12) {
 
-                Text(item.subtitle)
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.secondaryText)
+                    Text("\(position)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.secondaryText)
+                        .frame(width: 22)
+
+                    healthCircle(
+                        value: item.health
+                    )
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 4
+                    ) {
+
+                        Text(item.branch)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppColors.primaryText)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+
+                        Text(item.subtitle)
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(AppColors.secondaryText)
+                }
+
+                HStack(spacing: 10) {
+
+                    rankingIssueMetric(
+                        title: "Quiebre",
+                        value: item.issues.breakRisk,
+                        color: AppColors.red
+                    )
+
+                    rankingIssueMetric(
+                        title: "Sin rotación",
+                        value: item.issues.noRotation,
+                        color: AppColors.orange
+                    )
+
+                    rankingIssueMetric(
+                        title: "Sobrestock",
+                        value: item.issues.overstock,
+                        color: AppColors.blue
+                    )
+                }
             }
-
-            Spacer()
-
-            rankingMetric(
-                title: "Críticas",
-                value: item.critical,
-                color: AppColors.red
+            .padding(14)
+            .background(Color.white)
+            .cornerRadius(20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        selected
+                        ? AppColors.blue.opacity(0.85)
+                        : Color.gray.opacity(0.08),
+                        lineWidth: selected ? 1.6 : 1
+                    )
             )
-
-            rankingMetric(
-                title: "Altas",
-                value: item.high,
-                color: AppColors.orange
-            )
-
-            rankingMetric(
-                title: "Medias",
-                value: item.medium,
-                color: AppColors.blue
-            )
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(AppColors.secondaryText)
         }
-        .padding(14)
-        .background(Color.white)
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(
-                    selected
-                    ? AppColors.blue.opacity(0.70)
-                    : Color.gray.opacity(0.08),
-                    lineWidth: selected ? 1.4 : 1
-                )
-        )
+        .buttonStyle(.plain)
     }
 
-    private func rankingMetric(
+    private func healthCircle(
+        value: Int
+    ) -> some View {
+
+        ZStack {
+
+            Circle()
+                .stroke(
+                    healthColor(value).opacity(0.25),
+                    lineWidth: 5
+                )
+                .frame(width: 48, height: 48)
+
+            Circle()
+                .trim(
+                    from: 0,
+                    to: CGFloat(value) / 100
+                )
+                .stroke(
+                    healthColor(value),
+                    style: StrokeStyle(
+                        lineWidth: 5,
+                        lineCap: .round
+                    )
+                )
+                .rotationEffect(.degrees(-90))
+                .frame(width: 48, height: 48)
+
+            Text("\(value)%")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(healthColor(value))
+        }
+    }
+
+    private func rankingIssueMetric(
         title: String,
         value: Int,
         color: Color
     ) -> some View {
 
-        VStack(spacing: 4) {
+        HStack(spacing: 6) {
+
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
 
             Text(title)
-                .font(.system(size: 10))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(AppColors.secondaryText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.75)
+
+            Spacer()
 
             Text("\(value)")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(color)
         }
-        .frame(width: 42)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.gray.opacity(0.045))
+        .cornerRadius(12)
     }
 
     private var selectedBranchSection: some View {
@@ -443,23 +540,34 @@ struct BranchesView: View {
             spacing: 14
         ) {
 
-            if let branch = vm.selectedBranch {
+            if vm.isDetailLoading {
 
-                selectedBranchCard(branch)
+                RoundedRectangle(cornerRadius: 28)
+                    .fill(Color.white)
+                    .frame(height: 180)
+                    .overlay(
+                        ProgressView()
+                    )
+
+            } else if let branch = vm.selectedBranchDetail {
+
+                selectedBranchCard(
+                    branch
+                )
 
             } else {
 
                 EmptyStateView(
                     icon: "building.2",
                     title: "Sin detalle disponible",
-                    message: "No hay una sucursal seleccionada."
+                    message: "Selecciona una sucursal para ver su información."
                 )
             }
         }
     }
 
     private func selectedBranchCard(
-        _ branch: SelectedBranchDTO
+        _ branch: BranchDetailDTO
     ) -> some View {
 
         VStack(
@@ -486,6 +594,8 @@ struct BranchesView: View {
 
                     Text(branch.branch)
                         .font(.system(size: 22, weight: .bold))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
 
                     HStack(spacing: 8) {
 
@@ -522,12 +632,18 @@ struct BranchesView: View {
                 spacing: 18
             ) {
 
-                problemsSummary(branch)
+                problemsSummary(
+                    branch
+                )
 
-                healthEvolutionPlaceholder(branch)
+                healthEvolutionPlaceholder(
+                    branch
+                )
             }
 
-            riskProductsSection(branch)
+            riskProductsSection(
+                branch
+            )
         }
         .padding(20)
         .background(Color.white)
@@ -535,7 +651,7 @@ struct BranchesView: View {
     }
 
     private func problemsSummary(
-        _ branch: SelectedBranchDTO
+        _ branch: BranchDetailDTO
     ) -> some View {
 
         VStack(
@@ -548,29 +664,29 @@ struct BranchesView: View {
 
             problemRow(
                 icon: "exclamationmark.triangle.fill",
-                title: "Riesgo crítico",
-                value: branch.critical,
+                title: "Riesgo de quiebre",
+                value: branch.issues.breakRisk,
                 color: AppColors.red
             )
 
             problemRow(
-                icon: "flame.fill",
-                title: "Riesgo alto",
-                value: branch.high,
+                icon: "clock.fill",
+                title: "Sin rotación",
+                value: branch.issues.noRotation,
                 color: AppColors.orange
             )
 
             problemRow(
-                icon: "clock.fill",
-                title: "Riesgo medio",
-                value: branch.medium,
+                icon: "shippingbox.fill",
+                title: "Sobrestock",
+                value: branch.issues.overstock,
                 color: AppColors.blue
             )
 
             problemRow(
-                icon: "list.bullet.rectangle",
-                title: "Total casos",
-                value: branch.totalCases,
+                icon: "chart.bar.fill",
+                title: "Curva incompleta",
+                value: branch.issues.incompleteCurve,
                 color: AppColors.green
             )
         }
@@ -592,6 +708,8 @@ struct BranchesView: View {
 
             Text(title)
                 .font(.system(size: 13))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             Spacer()
 
@@ -602,7 +720,7 @@ struct BranchesView: View {
     }
 
     private func healthEvolutionPlaceholder(
-        _ branch: SelectedBranchDTO
+        _ branch: BranchDetailDTO
     ) -> some View {
 
         VStack(
@@ -636,7 +754,7 @@ struct BranchesView: View {
     }
 
     private func riskProductsSection(
-        _ branch: SelectedBranchDTO
+        _ branch: BranchDetailDTO
     ) -> some View {
 
         VStack(
@@ -670,7 +788,9 @@ struct BranchesView: View {
 
                     ForEach(branch.riskProducts) { product in
 
-                        riskProductRow(product)
+                        riskProductRow(
+                            product
+                        )
                     }
                 }
             }
@@ -775,4 +895,4 @@ struct BranchesView_Previews: PreviewProvider {
     static var previews: some View {
         BranchesView()
     }
-}   
+}

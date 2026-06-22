@@ -1,4 +1,5 @@
 import Foundation
+import combine
 
 @MainActor
 final class AlertsViewModel: ObservableObject {
@@ -45,6 +46,17 @@ final class AlertsViewModel: ObservableObject {
 
     var totalCount: Int {
         response?.summary.total ?? 0
+    }
+
+    var branchOptions: [String] {
+
+        let branches = Set(
+            alerts.map {
+                $0.branch
+            }
+        )
+
+        return ["Todas"] + branches.sorted()
     }
 
     func loadAlerts() async {

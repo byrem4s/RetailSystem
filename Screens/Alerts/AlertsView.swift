@@ -3,10 +3,12 @@ import SwiftUI
 struct AlertsView: View {
 
     @StateObject private var vm = AlertsViewModel()
-    @State private var selectedFilter = "Todas"
 
-    private let filters = [
-        "Todas",
+    @State private var selectedTypeFilter = "Total"
+    @State private var selectedBranchFilter = "Todas"
+
+    private let typeFilters = [
+        "Total",
         "Críticas",
         "Altas",
         "Medias"
@@ -14,19 +16,31 @@ struct AlertsView: View {
 
     private var filteredAlerts: [AlertDTO] {
 
-        switch selectedFilter {
+        vm.alerts.filter { item in
 
-        case "Críticas":
-            return vm.criticalAlerts
+            matchesTypeFilter(item)
+            && matchesBranchFilter(item)
+        }
+    }
 
-        case "Altas":
-            return vm.highAlerts
+    private var filteredCriticalAlerts: [AlertDTO] {
 
-        case "Medias":
-            return vm.mediumAlerts
+        filteredAlerts.filter {
+            $0.priority.uppercased() == "CRITICAL"
+        }
+    }
 
-        default:
-            return vm.alerts
+    private var filteredHighAlerts: [AlertDTO] {
+
+        filteredAlerts.filter {
+            $0.priority.uppercased() == "HIGH"
+        }
+    }
+
+    private var filteredMediumAlerts: [AlertDTO] {
+
+        filteredAlerts.filter {
+            $0.priority.uppercased() == "MEDIUM"
         }
     }
 
@@ -51,7 +65,7 @@ struct AlertsView: View {
                 }
                 .padding(.top, 28)
                 .padding(18)
-                .padding(.bottom, 120)
+                .padding(.bottom, 105)
             }
 
             if vm.isLoading {
@@ -87,132 +101,213 @@ struct AlertsView: View {
 
     private var headerSection: some View {
 
-        HStack {
+        VStack(
+            alignment: .leading,
+            spacing: 4
+        ) {
 
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text("Alertas")
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .bold
-                        )
+            Text("Alertas")
+                .font(
+                    .system(
+                        size: 34,
+                        weight: .bold
                     )
+                )
 
-                Text("Riesgos y oportunidades detectadas")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-
-            Spacer()
-
-            Button {
-
-            } label: {
-
-                ZStack(alignment: .topTrailing) {
-
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: "bell.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(AppColors.primaryText)
-
-                    if vm.totalCount > 0 {
-
-                        Text("\(vm.totalCount)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(AppColors.red)
-                            .clipShape(Capsule())
-                            .offset(x: 8, y: -6)
-                    }
-                }
-            }
+            Text("Riesgos y oportunidades detectadas")
+                .font(.system(size: 14))
+                .foregroundColor(AppColors.secondaryText)
         }
     }
 
     private var summarySection: some View {
 
-        HStack(spacing: 10) {
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
 
-            summaryCard(
-                title: "Críticas",
-                value: "\(vm.criticalCount)",
-                color: AppColors.red,
-                icon: "exclamationmark.triangle.fill"
-            )
+            Text("Resumen de alertas")
+                .font(.title3)
+                .fontWeight(.bold)
 
-            summaryCard(
-                title: "Altas",
-                value: "\(vm.highCount)",
-                color: AppColors.orange,
-                icon: "flame.fill"
-            )
+            VStack(spacing: 12) {
 
-            summaryCard(
-                title: "Medias",
-                value: "\(vm.mediumCount)",
-                color: AppColors.blue,
-                icon: "clock.fill"
-            )
+                HStack(spacing: 12) {
 
-            summaryCard(
-                title: "Total",
-                value: "\(vm.totalCount)",
-                color: AppColors.green,
-                icon: "checkmark.circle.fill"
-            )
+                    alertSummaryCard(
+                        title: "Críticas",
+                        value: "\(vm.criticalCount)",
+                        color: AppColors.red,
+                        icon: "exclamationmark.triangle.fill"
+                    )
+
+                    alertSummaryCard(
+                        title: "Altas",
+                        value: "\(vm.highCount)",
+                        color: AppColors.orange,
+                        icon: "flame.fill"
+                    )
+                }
+
+                HStack(spacing: 12) {
+
+                    alertSummaryCard(
+                        title: "Medias",
+                        value: "\(vm.mediumCount)",
+                        color: AppColors.blue,
+                        icon: "clock.fill"
+                    )
+
+                    alertSummaryCard(
+                        title: "Total",
+                        value: "\(vm.totalCount)",
+                        color: AppColors.green,
+                        icon: "checkmark.circle.fill"
+                    )
+                }
+            }
+            .padding(14)
+            .background(Color.white)
+            .cornerRadius(26)
         }
+    }
+
+    private func alertSummaryCard(
+        title: String,
+        value: String,
+        color: Color,
+        icon: String
+    ) -> some View {
+
+        HStack(spacing: 14) {
+
+            ZStack {
+
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.white.opacity(0.18))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(
+                alignment: .leading,
+                spacing: 3
+            ) {
+
+                Text(value)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(.white)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.92))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(color)
+        .cornerRadius(20)
     }
 
     private var filtersSection: some View {
 
-        ScrollView(
-            .horizontal,
-            showsIndicators: false
+        VStack(
+            alignment: .leading,
+            spacing: 12
         ) {
 
-            HStack(spacing: 10) {
+            Text("Filtros")
+                .font(.title3)
+                .fontWeight(.bold)
 
-                ForEach(filters, id: \.self) { filter in
+            HStack(spacing: 12) {
 
-                    Button {
+                filterMenu(
+                    title: "Tipo de alerta",
+                    value: selectedTypeFilter,
+                    options: typeFilters
+                ) { selected in
 
-                        selectedFilter = filter
+                    selectedTypeFilter = selected
+                }
 
-                    } label: {
+                filterMenu(
+                    title: "Sucursal",
+                    value: selectedBranchFilter,
+                    options: vm.branchOptions
+                ) { selected in
 
-                        Text(filter)
-                            .font(
-                                .system(
-                                    size: 13,
-                                    weight: .medium
-                                )
-                            )
-                            .foregroundColor(
-                                selectedFilter == filter
-                                ? .white
-                                : AppColors.primaryText
-                            )
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                selectedFilter == filter
-                                ? AppColors.blue
-                                : Color.white
-                            )
-                            .cornerRadius(14)
+                    selectedBranchFilter = selected
+                }
+            }
+        }
+    }
+
+    private func filterMenu(
+        title: String,
+        value: String,
+        options: [String],
+        onSelect: @escaping (String) -> Void
+    ) -> some View {
+
+        Menu {
+
+            ForEach(options, id: \.self) { option in
+
+                Button {
+
+                    onSelect(option)
+
+                } label: {
+
+                    HStack {
+
+                        Text(option)
+
+                        if option == value {
+                            Image(systemName: "checkmark")
+                        }
                     }
                 }
             }
+
+        } label: {
+
+            VStack(
+                alignment: .leading,
+                spacing: 7
+            ) {
+
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppColors.secondaryText)
+
+                HStack(spacing: 8) {
+
+                    Text(value)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(AppColors.secondaryText)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(Color.white)
+            .cornerRadius(18)
         }
     }
 
@@ -231,27 +326,35 @@ struct AlertsView: View {
                     message: "No hay riesgos operativos detectados."
                 )
 
-            } else if selectedFilter == "Todas" {
+            } else if filteredAlerts.isEmpty {
+
+                EmptyStateView(
+                    icon: "magnifyingglass",
+                    title: "Sin resultados",
+                    message: "No hay alertas para los filtros seleccionados."
+                )
+
+            } else if selectedTypeFilter == "Total" {
 
                 alertGroup(
                     title: "Alertas críticas",
-                    count: vm.criticalAlerts.count,
+                    count: filteredCriticalAlerts.count,
                     color: AppColors.red,
-                    items: vm.criticalAlerts
+                    items: filteredCriticalAlerts
                 )
 
                 alertGroup(
                     title: "Alertas altas",
-                    count: vm.highAlerts.count,
+                    count: filteredHighAlerts.count,
                     color: AppColors.orange,
-                    items: vm.highAlerts
+                    items: filteredHighAlerts
                 )
 
                 alertGroup(
                     title: "Alertas medias",
-                    count: vm.mediumAlerts.count,
+                    count: filteredMediumAlerts.count,
                     color: AppColors.blue,
-                    items: vm.mediumAlerts
+                    items: filteredMediumAlerts
                 )
 
             } else {
@@ -268,7 +371,7 @@ struct AlertsView: View {
 
     private var sectionTitleForSelectedFilter: String {
 
-        switch selectedFilter {
+        switch selectedTypeFilter {
 
         case "Críticas":
             return "Alertas críticas"
@@ -286,7 +389,7 @@ struct AlertsView: View {
 
     private var sectionColorForSelectedFilter: Color {
 
-        switch selectedFilter {
+        switch selectedTypeFilter {
 
         case "Críticas":
             return AppColors.red
@@ -549,48 +652,6 @@ struct AlertsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func summaryCard(
-        title: String,
-        value: String,
-        color: Color,
-        icon: String
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 10
-        ) {
-
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(color.opacity(0.12))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: icon)
-                    .foregroundColor(color)
-            }
-
-            Text(value)
-                .font(
-                    .system(
-                        size: 24,
-                        weight: .bold
-                    )
-                )
-
-            Text(title)
-                .font(.system(size: 12))
-                .foregroundColor(AppColors.secondaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
-        .cornerRadius(20)
-    }
-
     private func sectionTitle(
         title: String,
         count: Int,
@@ -619,6 +680,39 @@ struct AlertsView: View {
                 .background(color)
                 .clipShape(Capsule())
         }
+    }
+
+    private func matchesTypeFilter(
+        _ item: AlertDTO
+    ) -> Bool {
+
+        let priority = item.priority.uppercased()
+
+        switch selectedTypeFilter {
+
+        case "Críticas":
+            return priority == "CRITICAL"
+
+        case "Altas":
+            return priority == "HIGH"
+
+        case "Medias":
+            return priority == "MEDIUM"
+
+        default:
+            return true
+        }
+    }
+
+    private func matchesBranchFilter(
+        _ item: AlertDTO
+    ) -> Bool {
+
+        if selectedBranchFilter == "Todas" {
+            return true
+        }
+
+        return item.branch == selectedBranchFilter
     }
 
     private func priorityColor(

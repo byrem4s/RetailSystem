@@ -39,7 +39,7 @@ struct BottomTabBar: View {
             )
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
         .background(AppColors.card)
         .cornerRadius(28)
         .shadow(
@@ -64,7 +64,12 @@ struct BottomTabBar: View {
             VStack(spacing: 4) {
 
                 Image(systemName: icon)
-                    .font(.system(size: 17))
+                    .font(
+                        .system(
+                            size: 17,
+                            weight: .semibold
+                        )
+                    )
 
                 Text(title)
                     .font(.system(size: 10))
@@ -75,6 +80,7 @@ struct BottomTabBar: View {
                 : AppColors.secondaryText
             )
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 3)
         }
     }
 }

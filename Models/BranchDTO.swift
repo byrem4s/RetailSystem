@@ -4,13 +4,6 @@ struct BranchesResponseDTO: Decodable {
 
     let summary: BranchesSummaryDTO
     let ranking: [BranchRankingDTO]
-    let selectedBranch: SelectedBranchDTO?
-
-    enum CodingKeys: String, CodingKey {
-        case summary
-        case ranking
-        case selectedBranch = "selected_branch"
-    }
 }
 
 struct BranchesSummaryDTO: Decodable {
@@ -28,16 +21,29 @@ struct BranchesSummaryDTO: Decodable {
     }
 }
 
+struct BranchIssuesDTO: Decodable {
+
+    let breakRisk: Int
+    let noRotation: Int
+    let overstock: Int
+    let incompleteCurve: Int
+
+    enum CodingKeys: String, CodingKey {
+        case breakRisk = "break_risk"
+        case noRotation = "no_rotation"
+        case overstock
+        case incompleteCurve = "incomplete_curve"
+    }
+}
+
 struct BranchRankingDTO: Decodable, Identifiable {
 
     let id: String
     let branch: String
     let subtitle: String
     let health: Int
-
-    let critical: Int
-    let high: Int
-    let medium: Int
+    let riskLevel: String
+    let issues: BranchIssuesDTO
     let totalCases: Int
 
     enum CodingKeys: String, CodingKey {
@@ -45,26 +51,21 @@ struct BranchRankingDTO: Decodable, Identifiable {
         case branch
         case subtitle
         case health
-        case critical
-        case high
-        case medium
+        case riskLevel = "risk_level"
+        case issues
         case totalCases = "total_cases"
     }
 }
 
-struct SelectedBranchDTO: Decodable, Identifiable {
+struct BranchDetailDTO: Decodable, Identifiable {
 
     let id: String
     let branch: String
     let subtitle: String
     let health: Int
     let riskLevel: String
-
-    let critical: Int
-    let high: Int
-    let medium: Int
+    let issues: BranchIssuesDTO
     let totalCases: Int
-
     let riskProducts: [BranchRiskProductDTO]
 
     enum CodingKeys: String, CodingKey {
@@ -73,9 +74,7 @@ struct SelectedBranchDTO: Decodable, Identifiable {
         case subtitle
         case health
         case riskLevel = "risk_level"
-        case critical
-        case high
-        case medium
+        case issues
         case totalCases = "total_cases"
         case riskProducts = "risk_products"
     }

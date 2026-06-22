@@ -13,20 +13,39 @@ final class UploadViewModel: ObservableObject {
 
     private let service = UploadService()
 
-    func uploadFile(
-        url: URL
-    ) async {
+    func uploadFile(url: URL) async {
 
         isUploading = true
-
-        uploadSuccess = false
-
         errorMessage = nil
+        uploadSuccess = false
+        pipelineExecuted = false
+
+        let hasAccess = url.startAccessingSecurityScopedResource()
+
+        defer {
+            if hasAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+
+            isUploading = false
+        }
 
         do {
 
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(url.lastPathComponent)
+
+            if FileManager.default.fileExists(atPath: tempURL.path) {
+                try FileManager.default.removeItem(at: tempURL)
+            }
+
+            try FileManager.default.copyItem(
+                at: url,
+                to: tempURL
+            )
+
             try await service.uploadSalesFile(
-                fileURL: url
+                fileURL: tempURL
             )
 
             uploadSuccess = true
@@ -35,13 +54,11 @@ final class UploadViewModel: ObservableObject {
 
             pipelineExecuted = true
 
-            AppState.shared.refresh()
+            AppState.shared.refreshSystem()
 
         } catch {
 
             errorMessage = error.localizedDescription
         }
-
-        isUploading = false
     }
 }

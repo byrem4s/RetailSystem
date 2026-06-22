@@ -13,7 +13,11 @@ struct RootView: View {
                 switch selectedTab {
 
                 case .home:
-                    HomeView()
+                    HomeView(
+                        onOpenAlerts: {
+                            selectedTab = .alerts
+                        }
+                    )
 
                 case .alerts:
                     AlertsView()
@@ -31,7 +35,7 @@ struct RootView: View {
 
             BottomTabBar(selectedTab: $selectedTab)
                 .padding(.horizontal, 18)
-                .padding(.bottom, 10)
+                .padding(.bottom, 0)
         }
         .background(AppColors.background)
     }
@@ -40,7 +44,6 @@ struct RootView: View {
 struct RootView_Previews: PreviewProvider {
 
     static var previews: some View {
-
         RootView()
     }
 }

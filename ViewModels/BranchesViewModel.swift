@@ -1,10 +1,14 @@
 import Foundation
+import Combine
 
 @MainActor
 final class BranchesViewModel: ObservableObject {
 
     @Published var response: BranchesResponseDTO?
+    @Published var selectedBranchDetail: BranchDetailDTO?
+    @Published var selectedBranchID: String?
     @Published var isLoading = false
+    @Published var isDetailLoading = false
     @Published var errorMessage: String?
 
     private let service = BranchesService()
@@ -15,10 +19,6 @@ final class BranchesViewModel: ObservableObject {
 
     var ranking: [BranchRankingDTO] {
         response?.ranking ?? []
-    }
-
-    var selectedBranch: SelectedBranchDTO? {
-        response?.selectedBranch
     }
 
     var branchesCount: Int {
@@ -44,7 +44,23 @@ final class BranchesViewModel: ObservableObject {
 
         do {
 
-            response = try await service.fetchBranches()
+            let data = try await service.fetchBranches()
+
+            response = data
+
+            if selectedBranchID == nil,
+               let firstBranch = data.ranking.first {
+
+                await selectBranch(
+                    firstBranch.id
+                )
+
+            } else if let selectedBranchID {
+
+                await loadBranchDetail(
+                    selectedBranchID
+                )
+            }
 
         } catch {
 
@@ -52,5 +68,36 @@ final class BranchesViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func selectBranch(
+        _ branchID: String
+    ) async {
+
+        selectedBranchID = branchID
+
+        await loadBranchDetail(
+            branchID
+        )
+    }
+
+    private func loadBranchDetail(
+        _ branchID: String
+    ) async {
+
+        isDetailLoading = true
+
+        do {
+
+            selectedBranchDetail = try await service.fetchBranchDetail(
+                branchID: branchID
+            )
+
+        } catch {
+
+            errorMessage = error.localizedDescription
+        }
+
+        isDetailLoading = false
     }
 }

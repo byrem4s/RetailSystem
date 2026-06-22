@@ -28,11 +28,27 @@ struct HomeSummaryDTO: Decodable {
     let partialReplenishments: Int
     let withoutReplenishment: Int
 
+    let suggestedUnits: Int?
+    let coveredUnits: Int?
+    let pendingUnits: Int?
+    let coverageRate: Int?
+    let detectedCases: Int?
+    let branchesWithRisk: Int?
+    let lastUpdate: String?
+
     enum CodingKeys: String, CodingKey {
         case movements
         case completedReplenishments = "completed_replenishments"
         case partialReplenishments = "partial_replenishments"
         case withoutReplenishment = "without_replenishment"
+
+        case suggestedUnits = "suggested_units"
+        case coveredUnits = "covered_units"
+        case pendingUnits = "pending_units"
+        case coverageRate = "coverage_rate"
+        case detectedCases = "detected_cases"
+        case branchesWithRisk = "branches_with_risk"
+        case lastUpdate = "last_update"
     }
 }
 

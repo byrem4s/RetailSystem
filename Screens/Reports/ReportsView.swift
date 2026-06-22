@@ -1,4 +1,6 @@
 import SwiftUI
+import QuickLook
+import UIKit
 
 struct ReportsView: View {
 
@@ -6,6 +8,10 @@ struct ReportsView: View {
     @StateObject private var reportsVM = ReportsViewModel()
 
     @State private var showPicker = false
+
+    @State private var previewItem: ReportFileItem?
+    @State private var shareItem: ReportFileItem?
+    @State private var exportItem: ReportFileItem?
 
     var body: some View {
 
@@ -33,7 +39,9 @@ struct ReportsView: View {
                 .padding(.bottom, 120)
             }
 
-            if uploadVM.isUploading || reportsVM.isLoading {
+            if uploadVM.isUploading
+                || reportsVM.isLoading
+                || reportsVM.isFileLoading {
 
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
@@ -41,13 +49,11 @@ struct ReportsView: View {
                 VStack(spacing: 16) {
 
                     ProgressView()
+                        .tint(.white)
 
-                    Text(
-                        uploadVM.isUploading
-                        ? "Procesando archivo..."
-                        : "Cargando reportes..."
-                    )
-                    .foregroundColor(.white)
+                    Text(loadingText)
+                        .foregroundColor(.white)
+                        .font(.system(size: 14, weight: .medium))
                 }
             }
         }
@@ -95,6 +101,39 @@ struct ReportsView: View {
                 }
             }
         }
+        .sheet(item: $previewItem) { item in
+
+            QuickLookPreview(
+                url: item.url
+            )
+        }
+        .sheet(item: $shareItem) { item in
+
+            ShareSheet(
+                items: [
+                    item.url
+                ]
+            )
+        }
+        .sheet(item: $exportItem) { item in
+
+            DocumentExportPicker(
+                url: item.url
+            )
+        }
+    }
+
+    private var loadingText: String {
+
+        if uploadVM.isUploading {
+            return "Procesando archivo..."
+        }
+
+        if reportsVM.isFileLoading {
+            return "Preparando archivo..."
+        }
+
+        return "Cargando reportes..."
     }
 
     private var headerSection: some View {
@@ -180,7 +219,16 @@ struct ReportsView: View {
             if let latest = reportsVM.latest {
 
                 LatestReportCard(
-                    item: reportModel(from: latest)
+                    item: reportModel(from: latest),
+                    onPreview: {
+                        previewReport(latest)
+                    },
+                    onShare: {
+                        shareReport(latest)
+                    },
+                    onDownload: {
+                        exportReport(latest)
+                    }
                 )
 
             } else {
@@ -259,7 +307,16 @@ struct ReportsView: View {
                     ForEach(reportsVM.history) { item in
 
                         ReportHistoryCard(
-                            item: reportModel(from: item)
+                            item: reportModel(from: item),
+                            onPreview: {
+                                previewReport(item)
+                            },
+                            onShare: {
+                                shareReport(item)
+                            },
+                            onDownload: {
+                                exportReport(item)
+                            }
                         )
                     }
                 }
@@ -366,15 +423,66 @@ struct ReportsView: View {
         .cornerRadius(22)
     }
 
+    private func previewReport(
+        _ report: ReportDTO
+    ) {
+
+        Task {
+
+            if let url = await reportsVM.downloadReportFile(
+                report
+            ) {
+
+                previewItem = ReportFileItem(
+                    url: url
+                )
+            }
+        }
+    }
+
+    private func shareReport(
+        _ report: ReportDTO
+    ) {
+
+        Task {
+
+            if let url = await reportsVM.downloadReportFile(
+                report
+            ) {
+
+                shareItem = ReportFileItem(
+                    url: url
+                )
+            }
+        }
+    }
+
+    private func exportReport(
+        _ report: ReportDTO
+    ) {
+
+        Task {
+
+            if let url = await reportsVM.downloadReportFile(
+                report
+            ) {
+
+                exportItem = ReportFileItem(
+                    url: url
+                )
+            }
+        }
+    }
+
     private func reportModel(
         from dto: ReportDTO
     ) -> ReportModel {
 
         ReportModel(
+            id: dto.id,
             fileName: dto.fileName,
             date: dto.createdAt,
             type: dto.type,
-            rows: dto.rows,
             sheets: dto.sheets,
             size: dto.size,
             status: statusText(dto.status),
@@ -419,6 +527,114 @@ struct ReportsView: View {
 
         default:
             return AppColors.secondaryText
+        }
+    }
+}
+
+struct ReportFileItem: Identifiable {
+
+    let id = UUID()
+    let url: URL
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+
+    let items: [Any]
+
+    func makeUIViewController(
+        context: Context
+    ) -> UIActivityViewController {
+
+        UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {
+
+    }
+}
+
+struct DocumentExportPicker: UIViewControllerRepresentable {
+
+    let url: URL
+
+    func makeUIViewController(
+        context: Context
+    ) -> UIDocumentPickerViewController {
+
+        UIDocumentPickerViewController(
+            forExporting: [
+                url
+            ],
+            asCopy: true
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIDocumentPickerViewController,
+        context: Context
+    ) {
+
+    }
+}
+
+struct QuickLookPreview: UIViewControllerRepresentable {
+
+    let url: URL
+
+    func makeCoordinator() -> Coordinator {
+
+        Coordinator(
+            url: url
+        )
+    }
+
+    func makeUIViewController(
+        context: Context
+    ) -> QLPreviewController {
+
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+
+        return controller
+    }
+
+    func updateUIViewController(
+        _ uiViewController: QLPreviewController,
+        context: Context
+    ) {
+
+    }
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+
+        let url: URL
+
+        init(
+            url: URL
+        ) {
+
+            self.url = url
+        }
+
+        func numberOfPreviewItems(
+            in controller: QLPreviewController
+        ) -> Int {
+
+            1
+        }
+
+        func previewController(
+            _ controller: QLPreviewController,
+            previewItemAt index: Int
+        ) -> QLPreviewItem {
+
+            url as QLPreviewItem
         }
     }
 }

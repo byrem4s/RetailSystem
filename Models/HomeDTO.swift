@@ -61,19 +61,35 @@ struct HomeRisksDTO: Decodable {
 
 struct HomeRecentActivityDTO: Decodable, Identifiable {
 
-    let id = UUID()
+    let id: String
+
+    let eventType: String
+    let status: String
+    let severity: String
+    let source: String
 
     let title: String
-    let branch: String
-    let priority: String
-    let reason: String
-    let suggested: Int
+    let description: String
+
+    let executionID: Int?
+    let draftID: Int?
+    let rowID: Int?
+
+    let createdAt: String
+    let time: String
 
     enum CodingKeys: String, CodingKey {
+        case id
+        case eventType = "event_type"
+        case status
+        case severity
+        case source
         case title
-        case branch
-        case priority
-        case reason
-        case suggested
+        case description
+        case executionID = "execution_id"
+        case draftID = "draft_id"
+        case rowID = "row_id"
+        case createdAt = "created_at"
+        case time
     }
 }

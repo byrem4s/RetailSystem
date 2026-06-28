@@ -18,39 +18,57 @@ final class ActivityViewModel: ObservableObject {
         response?.activities ?? []
     }
 
-    var movementsCount: Int {
-        summary?.movements ?? 0
+    var totalCount: Int {
+        summary?.total ?? 0
     }
 
     var completedCount: Int {
         summary?.completed ?? 0
     }
 
-    var partialCount: Int {
-        summary?.partial ?? 0
+    var failedCount: Int {
+        summary?.failed ?? 0
     }
 
-    var withoutReplenishmentCount: Int {
-        summary?.withoutReplenishment ?? 0
+    var warningCount: Int {
+        summary?.warnings ?? 0
     }
 
-    var movementActivities: [ActivityDTO] {
+    var pipelineCount: Int {
+        summary?.pipelineEvents ?? 0
+    }
+
+    var f8Count: Int {
+        summary?.f8Events ?? 0
+    }
+
+    var reportCount: Int {
+        summary?.reportEvents ?? 0
+    }
+
+    var pipelineActivities: [ActivityDTO] {
         activities.filter {
-            $0.type.uppercased() == "MOVEMENT_COMPLETED"
+            $0.eventType.uppercased().hasPrefix("PIPELINE_")
         }
     }
 
-    var decisionActivities: [ActivityDTO] {
+    var f8Activities: [ActivityDTO] {
         activities.filter {
-            $0.type.uppercased() == "SYSTEM_DECISION"
-            || $0.type.uppercased() == "WITHOUT_REPLENISHMENT"
+            $0.eventType.uppercased().hasPrefix("F8_")
         }
     }
 
-    var resolvedActivities: [ActivityDTO] {
+    var reportActivities: [ActivityDTO] {
         activities.filter {
-            $0.status.uppercased() == "COMPLETED"
-            || $0.status.uppercased() == "PARTIAL"
+            $0.eventType.uppercased() == "REPORTS_GENERATED"
+        }
+    }
+
+    var errorActivities: [ActivityDTO] {
+        activities.filter {
+            $0.status.uppercased() == "FAILED"
+            || $0.severity.uppercased() == "ERROR"
+            || $0.severity.uppercased() == "WARNING"
         }
     }
 
@@ -61,7 +79,9 @@ final class ActivityViewModel: ObservableObject {
 
         do {
 
-            response = try await service.fetchActivity()
+            response = try await service.fetchActivity(
+                executionID: AppState.shared.selectedExecutionID
+            )
 
         } catch {
 

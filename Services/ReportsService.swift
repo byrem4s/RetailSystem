@@ -2,82 +2,98 @@ import Foundation
 
 final class ReportsService {
 
-    func fetchReports() async throws -> ReportsResponseDTO {
+    func fetchReports(
+        executionID: Int? = nil,
+        reportType: String? = nil,
+        status: String? = nil,
+        date: String? = nil,
+        search: String? = nil
+    ) async throws -> ReportsResponseDTO {
 
-        try await APIClient.shared.fetch(
-            endpoint: "/reports",
+        let endpoint = buildReportsEndpoint(
+            executionID: executionID,
+            reportType: reportType,
+            status: status,
+            date: date,
+            search: search
+        )
+
+        return try await APIClient.shared.fetch(
+            endpoint: endpoint,
             responseType: ReportsResponseDTO.self
         )
     }
 
-    func downloadReport(
-        _ report: ReportDTO
-    ) async throws -> URL {
+    private func buildReportsEndpoint(
+        executionID: Int?,
+        reportType: String?,
+        status: String?,
+        date: String?,
+        search: String?
+    ) -> String {
 
-        let remoteURL = try makeDownloadURL(
-            from: report.downloadURL
-        )
+        var components = URLComponents()
 
-        let (
-            temporaryURL,
-            response
-        ) = try await URLSession.shared.download(
-            from: remoteURL
-        )
+        components.path = Endpoints.reports
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              200...299 ~= httpResponse.statusCode else {
+        var queryItems: [URLQueryItem] = []
 
-            throw URLError(.badServerResponse)
-        }
+        if let executionID {
 
-        let destinationURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(report.fileName)
-
-        if FileManager.default.fileExists(
-            atPath: destinationURL.path
-        ) {
-
-            try FileManager.default.removeItem(
-                at: destinationURL
+            queryItems.append(
+                URLQueryItem(
+                    name: "execution_id",
+                    value: "\(executionID)"
+                )
             )
         }
 
-        try FileManager.default.moveItem(
-            at: temporaryURL,
-            to: destinationURL
-        )
+        if let reportType,
+           !reportType.isEmpty {
 
-        return destinationURL
-    }
-
-    private func makeDownloadURL(
-        from downloadURL: String
-    ) throws -> URL {
-
-        if let absoluteURL = URL(
-            string: downloadURL
-        ),
-           absoluteURL.scheme != nil {
-
-            return absoluteURL
+            queryItems.append(
+                URLQueryItem(
+                    name: "type",
+                    value: reportType
+                )
+            )
         }
 
-        guard let baseURL = URL(
-            string: Environment.baseURL
-        ) else {
+        if let status,
+           !status.isEmpty {
 
-            throw URLError(.badURL)
+            queryItems.append(
+                URLQueryItem(
+                    name: "status",
+                    value: status
+                )
+            )
         }
 
-        guard let finalURL = URL(
-            string: downloadURL,
-            relativeTo: baseURL
-        )?.absoluteURL else {
+        if let date,
+           !date.isEmpty {
 
-            throw URLError(.badURL)
+            queryItems.append(
+                URLQueryItem(
+                    name: "date",
+                    value: date
+                )
+            )
         }
 
-        return finalURL
+        if let search,
+           !search.isEmpty {
+
+            queryItems.append(
+                URLQueryItem(
+                    name: "search",
+                    value: search
+                )
+            )
+        }
+
+        components.queryItems = queryItems.isEmpty ? nil : queryItems
+
+        return components.string ?? Endpoints.reports
     }
 }

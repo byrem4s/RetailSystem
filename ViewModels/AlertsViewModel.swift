@@ -66,7 +66,9 @@ final class AlertsViewModel: ObservableObject {
 
         do {
 
-            response = try await service.fetchAlerts()
+            response = try await service.fetchAlerts(
+                executionID: AppState.shared.selectedExecutionID
+            )
 
         } catch {
 

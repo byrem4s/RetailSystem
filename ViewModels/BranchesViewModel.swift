@@ -7,11 +7,18 @@ final class BranchesViewModel: ObservableObject {
     @Published var response: BranchesResponseDTO?
     @Published var selectedBranchDetail: BranchDetailDTO?
     @Published var selectedBranchID: String?
+
+    @Published var selectedRiskDetail: RiskDetailDTO?
+
     @Published var isLoading = false
     @Published var isDetailLoading = false
+    @Published var isRiskDetailLoading = false
+    @Published var isAddingRiskToF8 = false
+
     @Published var errorMessage: String?
 
     private let service = BranchesService()
+    private let riskDetailService = RiskDetailService()
 
     var summary: BranchesSummaryDTO? {
         response?.summary
@@ -44,8 +51,9 @@ final class BranchesViewModel: ObservableObject {
 
         do {
 
-            let data = try await service.fetchBranches()
-
+            let data = try await service.fetchBranches(
+                executionID: AppState.shared.selectedExecutionID
+            )
             response = data
 
             if selectedBranchID == nil,
@@ -81,6 +89,54 @@ final class BranchesViewModel: ObservableObject {
         )
     }
 
+    func openRiskDetail(
+        riskKey: String
+    ) async {
+
+        isRiskDetailLoading = true
+        errorMessage = nil
+
+        do {
+
+            selectedRiskDetail = try await riskDetailService.fetchRiskDetail(
+                riskKey: riskKey
+            )
+
+        } catch {
+
+            errorMessage = error.localizedDescription
+        }
+
+        isRiskDetailLoading = false
+    }
+
+    func addRiskRecommendationToF8(
+        riskKey: String
+    ) async {
+
+        isAddingRiskToF8 = true
+        errorMessage = nil
+
+        do {
+
+            try await riskDetailService.addRecommendationToF8(
+                riskKey: riskKey
+            )
+
+            selectedRiskDetail = try await riskDetailService.fetchRiskDetail(
+                riskKey: riskKey
+            )
+
+            AppState.shared.refreshSystem()
+
+        } catch {
+
+            errorMessage = error.localizedDescription
+        }
+
+        isAddingRiskToF8 = false
+    }
+
     private func loadBranchDetail(
         _ branchID: String
     ) async {
@@ -90,7 +146,8 @@ final class BranchesViewModel: ObservableObject {
         do {
 
             selectedBranchDetail = try await service.fetchBranchDetail(
-                branchID: branchID
+                branchID: branchID,
+                executionID: AppState.shared.selectedExecutionID
             )
 
         } catch {

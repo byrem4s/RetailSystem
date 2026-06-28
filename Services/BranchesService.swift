@@ -2,25 +2,35 @@ import Foundation
 
 final class BranchesService {
 
-    func fetchBranches() async throws -> BranchesResponseDTO {
+    func fetchBranches(
+        executionID: Int? = nil
+    ) async throws -> BranchesResponseDTO {
 
-        try await APIClient.shared.fetch(
-            endpoint: Endpoints.branches,
+        var endpoint = Endpoints.branches
+
+        if let executionID {
+            endpoint += "?execution_id=\(executionID)"
+        }
+
+        return try await APIClient.shared.fetch(
+            endpoint: endpoint,
             responseType: BranchesResponseDTO.self
         )
     }
 
     func fetchBranchDetail(
-        branchID: String
+        branchID: String,
+        executionID: Int? = nil
     ) async throws -> BranchDetailDTO {
 
-        let encodedBranchID = branchID
-            .addingPercentEncoding(
-                withAllowedCharacters: .urlPathAllowed
-            ) ?? branchID
+        var endpoint = "\(Endpoints.branches)/\(branchID)"
+
+        if let executionID {
+            endpoint += "?execution_id=\(executionID)"
+        }
 
         return try await APIClient.shared.fetch(
-            endpoint: "\(Endpoints.branches)/\(encodedBranchID)",
+            endpoint: endpoint,
             responseType: BranchDetailDTO.self
         )
     }

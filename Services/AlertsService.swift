@@ -2,10 +2,18 @@ import Foundation
 
 final class AlertsService {
 
-    func fetchAlerts() async throws -> AlertsResponseDTO {
+    func fetchAlerts(
+        executionID: Int? = nil
+    ) async throws -> AlertsResponseDTO {
 
-        try await APIClient.shared.fetch(
-            endpoint: "/alerts",
+        var endpoint = Endpoints.alerts
+
+        if let executionID {
+            endpoint += "?execution_id=\(executionID)"
+        }
+
+        return try await APIClient.shared.fetch(
+            endpoint: endpoint,
             responseType: AlertsResponseDTO.self
         )
     }

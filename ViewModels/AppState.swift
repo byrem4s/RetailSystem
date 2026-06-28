@@ -19,4 +19,30 @@ final class AppState: ObservableObject {
 
         refreshID = UUID()
     }
+
+    @Published var selectedExecutionID: Int?
+    @Published var selectedHistoricalLabel: String?
+
+    var isHistoricalMode: Bool {
+        selectedExecutionID != nil
+    }
+
+    func selectHistoricalAnalysis(
+        executionID: Int,
+        label: String
+    ) {
+
+        selectedExecutionID = executionID
+        selectedHistoricalLabel = label
+
+        refreshSystem()
+    }
+
+    func clearHistoricalAnalysis() {
+
+        selectedExecutionID = nil
+        selectedHistoricalLabel = nil
+
+        refreshSystem()
+    }
 }

@@ -4,10 +4,18 @@ final class HomeService {
 
     private let api = APIClient.shared
 
-    func fetchHomeData() async throws -> HomeDTO {
+    func fetchHomeData(
+        executionID: Int? = nil
+    ) async throws -> HomeDTO {
 
-        try await api.fetch(
-            endpoint: Endpoints.home,
+        var endpoint = Endpoints.home
+
+        if let executionID {
+            endpoint += "?execution_id=\(executionID)"
+        }
+
+        return try await api.fetch(
+            endpoint: endpoint,
             responseType: HomeDTO.self
         )
     }

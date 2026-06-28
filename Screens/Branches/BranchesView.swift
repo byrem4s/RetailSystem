@@ -81,6 +81,15 @@ struct BranchesView: View {
                 ProgressView()
                     .scaleEffect(1.4)
             }
+
+            if vm.isRiskDetailLoading {
+
+                Color.black.opacity(0.20)
+                    .ignoresSafeArea()
+
+                ProgressView()
+                    .scaleEffect(1.4)
+            }
         }
         .background(AppColors.background)
         .alert(
@@ -89,7 +98,23 @@ struct BranchesView: View {
                 get: { vm.errorMessage != nil },
                 set: { _ in vm.errorMessage = nil }
             )
-        ) {
+        )
+        .sheet(
+            item: $vm.selectedRiskDetail
+        ) { detail in
+
+            RiskDetailView(
+                detail: detail,
+                isAddingToF8: vm.isAddingRiskToF8,
+                onAddToF8: {
+                    Task {
+                        await vm.addRiskRecommendationToF8(
+                            riskKey: detail.id
+                        )
+                    }
+                }
+            )
+        } {
             Button("OK") {}
         } message: {
             Text(vm.errorMessage ?? "")
@@ -801,60 +826,72 @@ struct BranchesView: View {
         _ product: BranchRiskProductDTO
     ) -> some View {
 
-        HStack(spacing: 12) {
+        Button {
 
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.gray.opacity(0.10))
-                .frame(width: 52, height: 52)
-                .overlay(
-                    Image(systemName: "shippingbox.fill")
-                        .foregroundColor(productColor(product.priority))
+            Task {
+                await vm.openRiskDetail(
+                    riskKey: product.id
                 )
-
-            VStack(
-                alignment: .leading,
-                spacing: 5
-            ) {
-
-                Text(product.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-                    .lineLimit(2)
-
-                Text(product.status)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(productColor(product.priority))
             }
 
-            Spacer()
+        } label: {
 
-            VStack(spacing: 4) {
+            HStack(spacing: 12) {
 
-                Text("Stock")
-                    .font(.system(size: 11))
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.gray.opacity(0.10))
+                    .frame(width: 52, height: 52)
+                    .overlay(
+                        Image(systemName: "shippingbox.fill")
+                            .foregroundColor(productColor(product.priority))
+                    )
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 5
+                ) {
+
+                    Text(product.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                        .lineLimit(2)
+
+                    Text(product.status)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(productColor(product.priority))
+                }
+
+                Spacer()
+
+                VStack(spacing: 4) {
+
+                    Text("Stock")
+                        .font(.system(size: 11))
+                        .foregroundColor(AppColors.secondaryText)
+
+                    Text("\(product.stock) u.")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(productColor(product.priority))
+                }
+
+                VStack(spacing: 4) {
+
+                    Text("Necesidad")
+                        .font(.system(size: 11))
+                        .foregroundColor(AppColors.secondaryText)
+
+                    Text("\(product.needed) u.")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(productColor(product.priority))
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(AppColors.secondaryText)
-
-                Text("\(product.stock) u.")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(productColor(product.priority))
             }
-
-            VStack(spacing: 4) {
-
-                Text("Necesidad")
-                    .font(.system(size: 11))
-                    .foregroundColor(AppColors.secondaryText)
-
-                Text("\(product.needed) u.")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(productColor(product.priority))
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(AppColors.secondaryText)
+            .padding(.vertical, 10)
         }
-        .padding(.vertical, 10)
+        .buttonStyle(.plain)
     }
 
     private func healthColor(

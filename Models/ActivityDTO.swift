@@ -8,16 +8,23 @@ struct ActivityResponseDTO: Decodable {
 
 struct ActivitySummaryDTO: Decodable {
 
-    let movements: Int
+    let total: Int
     let completed: Int
-    let partial: Int
-    let withoutReplenishment: Int
+    let failed: Int
+    let warnings: Int
+
+    let pipelineEvents: Int
+    let f8Events: Int
+    let reportEvents: Int
 
     enum CodingKeys: String, CodingKey {
-        case movements
+        case total
         case completed
-        case partial
-        case withoutReplenishment = "without_replenishment"
+        case failed
+        case warnings
+        case pipelineEvents = "pipeline_events"
+        case f8Events = "f8_events"
+        case reportEvents = "report_events"
     }
 }
 
@@ -25,38 +32,33 @@ struct ActivityDTO: Decodable, Identifiable {
 
     let id: String
 
-    let type: String
+    let eventType: String
     let status: String
+    let severity: String
+    let source: String
 
     let title: String
-    let product: String
-    let size: String
+    let description: String
 
-    let origin: String
-    let destination: String
-    let branch: String
+    let executionID: Int?
+    let draftID: Int?
+    let rowID: Int?
 
-    let priority: String
-    let reason: String
-
-    let suggested: Int
+    let createdAt: String
     let time: String
-    let actionTaken: String
 
     enum CodingKeys: String, CodingKey {
         case id
-        case type
+        case eventType = "event_type"
         case status
+        case severity
+        case source
         case title
-        case product
-        case size
-        case origin
-        case destination
-        case branch
-        case priority
-        case reason
-        case suggested
+        case description
+        case executionID = "execution_id"
+        case draftID = "draft_id"
+        case rowID = "row_id"
+        case createdAt = "created_at"
         case time
-        case actionTaken = "action_taken"
     }
 }

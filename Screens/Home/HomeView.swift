@@ -6,6 +6,12 @@ struct HomeView: View {
 
     @State private var showAllSummaryKPIs = false
 
+    @State private var showAnalysisDateSelector = false
+
+    @StateObject private var notificationsVM = NotificationViewModel()
+    
+    @State private var showNotifications = false
+
     let onOpenAlerts: () -> Void
 
     init(
@@ -21,8 +27,8 @@ struct HomeView: View {
                 icon: "arrow.left.arrow.right",
                 color: AppColors.blue,
                 value: valueText(vm.homeData?.summary.movements),
-                title: "Movimientos",
-                subtitle: "realizados"
+                title: "Unidades",
+                subtitle: "a mover"
             ),
             .init(
                 icon: "checkmark.circle.fill",
@@ -83,8 +89,8 @@ struct HomeView: View {
                 icon: "list.bullet.rectangle.fill",
                 color: AppColors.blue,
                 value: valueText(vm.homeData?.summary.detectedCases),
-                title: "Casos",
-                subtitle: "detectados"
+                title: "Reposiciones ",
+                subtitle: "sugeridas"
             ),
             .init(
                 icon: "building.2.crop.circle.fill",
@@ -152,18 +158,69 @@ struct HomeView: View {
                 get: { vm.errorMessage != nil },
                 set: { _ in vm.errorMessage = nil }
             )
+        )
+        .alert(
+            "Sin información",
+            isPresented: Binding(
+                get: { vm.historyMessage != nil },
+                set: { _ in vm.historyMessage = nil }
+            )
         ) {
+            Button("OK") {}
+        } message: {
+            Text(vm.historyMessage ?? "")
+        } 
+        .sheet(
+            isPresented: $showAnalysisDateSelector
+        ) {
+
+            AnalysisDateSelectorSheet(
+                selectedDate: $vm.selectedHistoryDate,
+                analyses: vm.historyAnalyses,
+                isLoading: vm.isHistoryLoading,
+                isHistoricalMode: vm.isHistoricalMode,
+                historicalLabel: vm.historicalLabel,
+                onSearch: {
+                    Task {
+                        await vm.loadHistoryForSelectedDate()
+                    }
+                },
+                onSelect: { item in
+                    Task {
+                        await vm.selectHistoricalAnalysis(
+                            item
+                        )
+                    }
+                },
+                onClear: {
+                    Task {
+                        await vm.clearHistoricalMode()
+                    }
+                }
+            )
+        }{
             Button("OK") {}
         } message: {
             Text(vm.errorMessage ?? "")
         }
         .task {
             await vm.loadData()
+            await notificationsVM.loadUnreadCount()
         }
         .onReceive(AppState.shared.$refreshID) { _ in
             Task {
                 await vm.loadData()
+                await notificationsVM.loadUnreadCount()
             }
+        }
+
+        .sheet(
+            isPresented: $showNotifications
+        ) {
+
+            NotificationsSheet(
+                vm: notificationsVM
+            )
         }
     }
 
@@ -193,39 +250,97 @@ struct HomeView: View {
 
             Button {
 
+                showNotifications = true
+
             } label: {
 
-                Image(systemName: "bell")
-                    .font(
-                        .system(
-                            size: 23,
-                            weight: .semibold
+                ZStack(alignment: .topTrailing) {
+
+                    Image(systemName: "bell")
+                        .font(
+                            .system(
+                                size: 24,
+                                weight: .semibold
+                            )
                         )
-                    )
-                    .foregroundColor(AppColors.primaryText)
-                    .frame(width: 44, height: 44)
+                        .foregroundColor(AppColors.primaryText)
+                        .frame(width: 44, height: 44)
+
+                    if notificationsVM.unreadCount > 0 {
+
+                        Text(
+                            notificationsVM.unreadCount > 99
+                            ? "99+"
+                            : "\(notificationsVM.unreadCount)"
+                        )
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(AppColors.red)
+                        .clipShape(Capsule())
+                        .offset(x: 4, y: 2)
+                    }
+                }
             }
         }
     }
 
     private var userSection: some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: 4
+        HStack(
+            alignment: .top
         ) {
 
-            Text("Hola, \(vm.userName)")
-                .font(
-                    .system(
-                        size: 22,
-                        weight: .semibold
-                    )
-                )
+            VStack(
+                alignment: .leading,
+                spacing: 4
+            ) {
 
-            Text(vm.userBranch)
-                .font(.system(size: 14))
-                .foregroundColor(AppColors.secondaryText)
+                Text("Hola, \(vm.userName)")
+                    .font(
+                        .system(
+                            size: 22,
+                            weight: .semibold
+                        )
+                    )
+
+                Text(vm.userBranch)
+                    .font(.system(size: 14))
+                    .foregroundColor(AppColors.secondaryText)
+
+                if vm.isHistoricalMode,
+                let historicalLabel = vm.historicalLabel {
+
+                    Text("Modo histórico · \(historicalLabel)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.orange)
+                        .padding(.top, 4)
+                }
+            }
+
+            Spacer()
+
+            Button {
+
+                showAnalysisDateSelector = true
+
+            } label: {
+
+                Image(systemName: "calendar")
+                    .font(
+                        .system(
+                            size: 23,
+                            weight: .semibold
+                        )
+                    )
+                    .foregroundColor(
+                        vm.isHistoricalMode
+                        ? AppColors.orange
+                        : AppColors.primaryText
+                    )
+                    .frame(width: 44, height: 44)
+            }
         }
     }
 
@@ -520,11 +635,11 @@ struct HomeView: View {
                 ZStack {
 
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(priorityColor(item.priority).opacity(0.12))
+                        .fill(activityColor(item).opacity(0.12))
                         .frame(width: 46, height: 46)
 
                     Image(systemName: activityIcon(item))
-                        .foregroundColor(priorityColor(item.priority))
+                        .foregroundColor(activityColor(item))
                 }
 
                 VStack(
@@ -534,18 +649,18 @@ struct HomeView: View {
 
                     HStack {
 
-                        Text(priorityLabel(item.priority))
+                        Text(activityLabel(item))
                             .font(
                                 .system(
                                     size: 11,
                                     weight: .bold
                                 )
                             )
-                            .foregroundColor(priorityColor(item.priority))
+                            .foregroundColor(activityColor(item))
 
                         Spacer()
 
-                        Text("Sugerido: \(item.suggested)")
+                        Text(item.time)
                             .font(.system(size: 11))
                             .foregroundColor(AppColors.secondaryText)
                     }
@@ -558,72 +673,151 @@ struct HomeView: View {
                             )
                         )
 
-                    Text(item.branch)
-                        .font(.system(size: 13))
-                        .foregroundColor(AppColors.secondaryText)
+                    if !item.description.isEmpty {
 
-                    Text(item.reason)
-                        .font(.system(size: 12))
-                        .foregroundColor(AppColors.secondaryText)
-                        .fixedSize(
-                            horizontal: false,
-                            vertical: true
-                        )
+                        Text(item.description)
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.secondaryText)
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+                    }
+
+                    activityMetadata(
+                        item
+                    )
                 }
             }
             .padding()
         }
     }
 
+
+    private func activityMetadata(
+        _ item: HomeRecentActivityDTO
+    ) -> some View {
+
+        HStack(spacing: 8) {
+
+            metadataBadge(
+                title: "Origen",
+                value: item.source
+            )
+
+            if let executionID = item.executionID {
+
+                metadataBadge(
+                    title: "Run",
+                    value: "\(executionID)"
+                )
+            }
+
+            if let draftID = item.draftID {
+
+                metadataBadge(
+                    title: "F8",
+                    value: "\(draftID)"
+                )
+            }
+        }
+    }
+
+
+    private func metadataBadge(
+        title: String,
+        value: String
+    ) -> some View {
+
+        HStack(spacing: 4) {
+
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundColor(AppColors.secondaryText)
+
+            Text(value)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.gray.opacity(0.08))
+        .cornerRadius(10)
+    }
+
+
     private func activityIcon(
         _ item: HomeRecentActivityDTO
     ) -> String {
 
-        item.suggested > 0
-        ? "arrow.left.arrow.right"
-        : "exclamationmark.triangle.fill"
+        let event = item.eventType.uppercased()
+
+        if event.hasPrefix("F8_") {
+            return "tablecells.fill"
+        }
+
+        if event == "REPORTS_GENERATED" {
+            return "doc.text.fill"
+        }
+
+        if event.contains("FAILED") || item.status.uppercased() == "FAILED" {
+            return "exclamationmark.triangle.fill"
+        }
+
+        if event.contains("COMPLETED") {
+            return "checkmark.circle.fill"
+        }
+
+        return "gearshape.fill"
     }
 
-    private func priorityLabel(
-        _ priority: String
+
+    private func activityLabel(
+        _ item: HomeRecentActivityDTO
     ) -> String {
 
-        let value = priority.uppercased()
+        let source = item.source.uppercased()
 
-        if value.contains("CRITICAL") {
-            return "Crítico"
+        if source == "PIPELINE" {
+            return "Pipeline"
         }
 
-        if value.contains("HIGH") {
-            return "Alto"
+        if source == "REPORTS" {
+            return "Reporte"
         }
 
-        if value.contains("MEDIUM") {
-            return "Medio"
+        if source == "F8" {
+            return "F8"
         }
 
-        return priority
+        return source
     }
 
-    private func priorityColor(
-        _ priority: String
+
+    private func activityColor(
+        _ item: HomeRecentActivityDTO
     ) -> Color {
 
-        let value = priority.uppercased()
+        let severity = item.severity.uppercased()
+        let status = item.status.uppercased()
 
-        if value.contains("CRITICAL") {
+        if severity == "ERROR" || status == "FAILED" {
             return AppColors.red
         }
 
-        if value.contains("HIGH") {
+        if severity == "WARNING" {
             return AppColors.orange
         }
 
-        if value.contains("MEDIUM") {
-            return AppColors.blue
+        if severity == "SUCCESS" || status == "COMPLETED" || status == "CONFIRMED" {
+            return AppColors.green
         }
 
-        return AppColors.green
+        if item.eventType.uppercased().hasPrefix("F8_") {
+            return AppColors.orange
+        }
+
+        return AppColors.blue
     }
 
     private func valueText(

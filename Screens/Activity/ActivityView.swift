@@ -7,23 +7,27 @@ struct ActivityView: View {
 
     private let filters = [
         "Todas",
-        "Movimientos",
-        "Decisiones",
-        "Alertas resueltas"
+        "Pipeline",
+        "F8",
+        "Reportes",
+        "Errores"
     ]
 
     private var filteredActivities: [ActivityDTO] {
 
         switch selectedFilter {
 
-        case "Movimientos":
-            return vm.movementActivities
+        case "Pipeline":
+            return vm.pipelineActivities
 
-        case "Decisiones":
-            return vm.decisionActivities
+        case "F8":
+            return vm.f8Activities
 
-        case "Alertas resueltas":
-            return vm.resolvedActivities
+        case "Reportes":
+            return vm.reportActivities
+
+        case "Errores":
+            return vm.errorActivities
 
         default:
             return vm.activities
@@ -87,55 +91,18 @@ struct ActivityView: View {
 
     private var headerSection: some View {
 
-        HStack {
+        VStack(
+            alignment: .leading,
+            spacing: 4
+        ) {
 
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
+            Text("Actividad")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
 
-                Text("Activity")
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .bold
-                        )
-                    )
-
-                Text("Seguimiento de movimientos y decisiones del sistema")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-
-            Spacer()
-
-            HStack(spacing: 10) {
-
-                headerIcon("magnifyingglass")
-
-                headerIcon("slider.horizontal.3")
-            }
-        }
-    }
-
-    private func headerIcon(
-        _ icon: String
-    ) -> some View {
-
-        Button {
-
-        } label: {
-
-            ZStack {
-
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-            }
+            Text("Historial operativo del sistema")
+                .font(.system(size: 14))
+                .foregroundColor(AppColors.secondaryText)
         }
     }
 
@@ -152,12 +119,7 @@ struct ActivityView: View {
                 } label: {
 
                     Text(filter)
-                        .font(
-                            .system(
-                                size: 12,
-                                weight: .semibold
-                            )
-                        )
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(
                             selectedFilter == filter
                             ? AppColors.blue
@@ -188,52 +150,42 @@ struct ActivityView: View {
 
     private var summarySection: some View {
 
-        HStack(spacing: 0) {
+        VStack(spacing: 12) {
 
-            summaryCard(
-                icon: "arrow.left.arrow.right",
-                color: AppColors.green,
-                value: "\(vm.movementsCount)",
-                title: "Movimientos"
-            )
+            HStack(spacing: 12) {
 
-            verticalDivider
+                summaryCard(
+                    icon: "clock.arrow.circlepath",
+                    color: AppColors.blue,
+                    value: "\(vm.totalCount)",
+                    title: "Eventos"
+                )
 
-            summaryCard(
-                icon: "checkmark.rectangle",
-                color: AppColors.blue,
-                value: "\(vm.completedCount)",
-                title: "Completos"
-            )
+                summaryCard(
+                    icon: "checkmark.circle.fill",
+                    color: AppColors.green,
+                    value: "\(vm.completedCount)",
+                    title: "Completados"
+                )
+            }
 
-            verticalDivider
+            HStack(spacing: 12) {
 
-            summaryCard(
-                icon: "chart.pie",
-                color: AppColors.orange,
-                value: "\(vm.partialCount)",
-                title: "Parciales"
-            )
+                summaryCard(
+                    icon: "doc.text.fill",
+                    color: AppColors.orange,
+                    value: "\(vm.reportCount)",
+                    title: "Reportes"
+                )
 
-            verticalDivider
-
-            summaryCard(
-                icon: "xmark.circle",
-                color: AppColors.red,
-                value: "\(vm.withoutReplenishmentCount)",
-                title: "Sin reposición"
-            )
+                summaryCard(
+                    icon: "exclamationmark.triangle.fill",
+                    color: vm.failedCount > 0 ? AppColors.red : AppColors.green,
+                    value: "\(vm.failedCount)",
+                    title: "Errores"
+                )
+            }
         }
-        .padding(14)
-        .background(Color.white)
-        .cornerRadius(24)
-    }
-
-    private var verticalDivider: some View {
-
-        Rectangle()
-            .fill(Color.gray.opacity(0.15))
-            .frame(width: 1, height: 92)
     }
 
     private func summaryCard(
@@ -243,45 +195,36 @@ struct ActivityView: View {
         title: String
     ) -> some View {
 
-        VStack(
-            alignment: .center,
-            spacing: 8
-        ) {
+        HStack(spacing: 12) {
 
             ZStack {
 
                 RoundedRectangle(cornerRadius: 14)
                     .fill(color.opacity(0.12))
-                    .frame(width: 42, height: 42)
+                    .frame(width: 44, height: 44)
 
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(color)
             }
-            .frame(height: 42)
 
-            Text(value)
-                .font(
-                    .system(
-                        size: 24,
-                        weight: .bold
-                    )
-                )
-                .foregroundColor(AppColors.primaryText)
-                .frame(height: 28)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            VStack(alignment: .leading, spacing: 3) {
 
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(AppColors.primaryText)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
-                .frame(height: 30, alignment: .top)
+                Text(value)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(AppColors.primaryText)
+
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+
+            Spacer()
         }
+        .padding(14)
         .frame(maxWidth: .infinity)
-        .frame(height: 112)
+        .background(Color.white)
+        .cornerRadius(22)
     }
 
     private var activityListSection: some View {
@@ -291,20 +234,16 @@ struct ActivityView: View {
             spacing: 14
         ) {
 
-            Text("Hoy")
-                .font(
-                    .system(
-                        size: 24,
-                        weight: .bold
-                    )
-                )
+            Text("Historial")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
 
             if filteredActivities.isEmpty {
 
                 EmptyStateView(
                     icon: "clock",
                     title: "Sin actividad",
-                    message: "No hay movimientos o decisiones para este filtro."
+                    message: "No hay eventos para este filtro."
                 )
 
             } else {
@@ -324,318 +263,188 @@ struct ActivityView: View {
         _ item: ActivityDTO
     ) -> some View {
 
-        let color = statusColor(item.status)
-
-        return ZStack(
-            alignment: .leading
+        VStack(
+            alignment: .leading,
+            spacing: 12
         ) {
 
-            VStack(
-                alignment: .leading,
-                spacing: 14
+            HStack(
+                alignment: .top,
+                spacing: 12
             ) {
 
-                HStack(
-                    alignment: .top,
-                    spacing: 14
+                ZStack {
+
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(activityColor(item).opacity(0.12))
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: activityIcon(item))
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(activityColor(item))
+                }
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 6
                 ) {
 
-                    ZStack {
+                    HStack {
 
-                        RoundedRectangle(cornerRadius: 18)
-                            .fill(color.opacity(0.12))
-                            .frame(width: 62, height: 62)
+                        Text(activityLabel(item))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(activityColor(item))
 
-                        Image(systemName: iconForActivity(item))
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(color)
+                        Spacer()
+
+                        Text(item.time)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppColors.secondaryText)
                     }
 
-                    VStack(
-                        alignment: .leading,
-                        spacing: 6
-                    ) {
+                    Text(item.title)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.primaryText)
 
-                        Text(typeLabel(item.type))
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(color)
+                    if !item.description.isEmpty {
 
-                        Text(item.title)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(AppColors.primaryText)
+                        Text(item.description)
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.secondaryText)
                             .fixedSize(
                                 horizontal: false,
                                 vertical: true
                             )
-
-                        Text("\(item.origin) → \(item.destination)")
-                            .font(.system(size: 13))
-                            .foregroundColor(AppColors.secondaryText)
-
-                        statusBadge(item.status)
-                    }
-
-                    Spacer()
-
-                    VStack(
-                        alignment: .trailing,
-                        spacing: 8
-                    ) {
-
-                        Text(item.time)
-                            .font(.system(size: 12))
-                            .foregroundColor(AppColors.secondaryText)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(AppColors.secondaryText)
                     }
                 }
-
-                reasonBox(item)
-
-                routeBox(item)
             }
-            .padding(16)
-            .padding(.leading, 10)
-            .background(Color.white)
-            .cornerRadius(24)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.gray.opacity(0.10))
-            )
 
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-                .offset(x: 0, y: -34)
+            activityMetadata(item)
         }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(24)
     }
 
-    private func statusBadge(
-        _ status: String
-    ) -> some View {
-
-        let color = statusColor(status)
-
-        return HStack(spacing: 5) {
-
-            Image(systemName: badgeIcon(status))
-                .font(.system(size: 10, weight: .bold))
-
-            Text(statusLabel(status))
-                .font(.system(size: 11, weight: .semibold))
-        }
-        .foregroundColor(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color.opacity(0.12))
-        .cornerRadius(10)
-    }
-
-    private func reasonBox(
+    private func activityMetadata(
         _ item: ActivityDTO
     ) -> some View {
 
-        HStack(
-            alignment: .top,
-            spacing: 4
-        ) {
+        HStack(spacing: 8) {
 
-            Text("Motivo:")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(AppColors.primaryText)
-
-            Text(item.reason)
-                .font(.system(size: 12))
-                .foregroundColor(AppColors.secondaryText)
-                .fixedSize(
-                    horizontal: false,
-                    vertical: true
-                )
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(14)
-    }
-
-    private func routeBox(
-        _ item: ActivityDTO
-    ) -> some View {
-
-        HStack(spacing: 0) {
-
-            routeColumn(
-                icon: "shippingbox",
+            metadataBadge(
                 title: "Origen",
-                value: item.origin
+                value: item.source
             )
 
-            Rectangle()
-                .fill(Color.gray.opacity(0.15))
-                .frame(width: 1, height: 42)
+            if let executionID = item.executionID {
 
-            routeColumn(
-                icon: "building.2",
-                title: "Destino",
-                value: item.destination
-            )
+                metadataBadge(
+                    title: "Run",
+                    value: "\(executionID)"
+                )
+            }
+
+            if let draftID = item.draftID {
+
+                metadataBadge(
+                    title: "F8",
+                    value: "\(draftID)"
+                )
+            }
         }
-        .padding(12)
-        .background(Color.gray.opacity(0.04))
-        .cornerRadius(14)
     }
 
-    private func routeColumn(
-        icon: String,
+    private func metadataBadge(
         title: String,
         value: String
     ) -> some View {
 
-        HStack(spacing: 10) {
+        HStack(spacing: 4) {
 
-            Image(systemName: icon)
+            Text(title)
+                .font(.system(size: 10))
                 .foregroundColor(AppColors.secondaryText)
 
-            VStack(
-                alignment: .leading,
-                spacing: 2
-            ) {
-
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundColor(AppColors.secondaryText)
-
-                Text(value)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
+            Text(value)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.gray.opacity(0.08))
+        .cornerRadius(10)
     }
 
-    private func iconForActivity(
+    private func activityIcon(
         _ item: ActivityDTO
     ) -> String {
 
-        switch item.type.uppercased() {
+        let event = item.eventType.uppercased()
 
-        case "MOVEMENT_COMPLETED":
-            return "arrow.up.right"
-
-        case "PARTIAL_REPLENISHMENT":
-            return "chart.pie"
-
-        case "WITHOUT_REPLENISHMENT":
-            return "xmark.circle"
-
-        case "SYSTEM_DECISION":
-            return "brain.head.profile"
-
-        default:
-            return "info.circle"
+        if event.hasPrefix("F8_") {
+            return "tablecells.fill"
         }
+
+        if event == "REPORTS_GENERATED" {
+            return "doc.text.fill"
+        }
+
+        if event.contains("FAILED") || item.status.uppercased() == "FAILED" {
+            return "exclamationmark.triangle.fill"
+        }
+
+        if event.contains("COMPLETED") {
+            return "checkmark.circle.fill"
+        }
+
+        return "gearshape.fill"
     }
 
-    private func typeLabel(
-        _ type: String
-    ) -> String {
-
-        switch type.uppercased() {
-
-        case "MOVEMENT_COMPLETED":
-            return "MOVIMIENTO COMPLETADO"
-
-        case "PARTIAL_REPLENISHMENT":
-            return "REPOSICIÓN PARCIAL"
-
-        case "WITHOUT_REPLENISHMENT":
-            return "SIN REPOSICIÓN"
-
-        case "SYSTEM_DECISION":
-            return "DECISIÓN DEL SISTEMA"
-
-        default:
-            return type
-        }
-    }
-
-    private func statusLabel(
-        _ status: String
-    ) -> String {
-
-        switch status.uppercased() {
-
-        case "COMPLETED":
-            return "Completo"
-
-        case "PARTIAL":
-            return "Parcial"
-
-        case "WITHOUT_REPLENISHMENT":
-            return "Sin reposición"
-
-        case "SYSTEM_DECISION":
-            return "Decisión"
-
-        default:
-            return status
-        }
-    }
-
-    private func statusColor(
-        _ status: String
+    private func activityColor(
+        _ item: ActivityDTO
     ) -> Color {
 
-        switch status.uppercased() {
+        let severity = item.severity.uppercased()
+        let status = item.status.uppercased()
 
-        case "COMPLETED":
-            return AppColors.green
-
-        case "PARTIAL":
-            return AppColors.orange
-
-        case "WITHOUT_REPLENISHMENT":
+        if severity == "ERROR" || status == "FAILED" {
             return AppColors.red
-
-        case "SYSTEM_DECISION":
-            return AppColors.blue
-
-        default:
-            return AppColors.blue
         }
+
+        if severity == "WARNING" {
+            return AppColors.orange
+        }
+
+        if severity == "SUCCESS" || status == "COMPLETED" || status == "CONFIRMED" {
+            return AppColors.green
+        }
+
+        if item.eventType.uppercased().hasPrefix("F8_") {
+            return AppColors.orange
+        }
+
+        return AppColors.blue
     }
 
-    private func badgeIcon(
-        _ status: String
+    private func activityLabel(
+        _ item: ActivityDTO
     ) -> String {
 
-        switch status.uppercased() {
+        let source = item.source.uppercased()
 
-        case "COMPLETED":
-            return "checkmark.circle"
-
-        case "PARTIAL":
-            return "clock"
-
-        case "WITHOUT_REPLENISHMENT":
-            return "xmark.circle"
-
-        case "SYSTEM_DECISION":
-            return "brain.head.profile"
-
-        default:
-            return "info.circle"
+        if source == "PIPELINE" {
+            return "Pipeline"
         }
-    }
-}
 
-struct ActivityView_Previews: PreviewProvider {
+        if source == "REPORTS" {
+            return "Reporte"
+        }
 
-    static var previews: some View {
-        ActivityView()
+        if source == "F8" {
+            return "F8"
+        }
+
+        return source
     }
 }

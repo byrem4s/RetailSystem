@@ -12,6 +12,10 @@ struct ReportsView: View {
     @State private var previewItem: ReportFileItem?
     @State private var shareItem: ReportFileItem?
     @State private var exportItem: ReportFileItem?
+    @State private var showReportsFilters = false
+
+    @StateObject private var automationVM = ReportAutomationViewModel()
+    @State private var showReportAutomation = false
 
     var body: some View {
 
@@ -40,6 +44,7 @@ struct ReportsView: View {
             }
 
             if uploadVM.isUploading
+                || uploadVM.isRunningPipeline
                 || reportsVM.isLoading
                 || reportsVM.isFileLoading {
 
@@ -96,8 +101,6 @@ struct ReportsView: View {
                     await uploadVM.uploadFile(
                         url: url
                     )
-
-                    AppState.shared.refreshSystem()
                 }
             }
         }
@@ -121,24 +124,46 @@ struct ReportsView: View {
                 url: item.url
             )
         }
-    }
 
-    private var loadingText: String {
+        .sheet(
+            isPresented: $showReportAutomation
+        ) {
 
-        if uploadVM.isUploading {
-            return "Procesando archivo..."
+            ReportAutomationSheet(
+                vm: automationVM
+            )
         }
+        .sheet(
+            isPresented: $showReportsFilters
+        ) {
 
-        if reportsVM.isFileLoading {
-            return "Preparando archivo..."
+            ReportsFilterSheet(
+                selectedReportType: $reportsVM.selectedReportType,
+                selectedReportStatus: $reportsVM.selectedReportStatus,
+                searchText: $reportsVM.searchText,
+                isDateFilterEnabled: $reportsVM.isDateFilterEnabled,
+                selectedDate: $reportsVM.selectedDate,
+                reportTypeOptions: reportsVM.reportTypeOptions,
+                reportStatusOptions: reportsVM.reportStatusOptions,
+                onApply: {
+                    Task {
+                        await reportsVM.applyFilters()
+                    }
+                },
+                onClear: {
+                    Task {
+                        await reportsVM.clearFilters()
+                    }
+                }
+            )
         }
-
-        return "Cargando reportes..."
     }
 
     private var headerSection: some View {
 
-        HStack {
+        HStack(
+            alignment: .top
+        ) {
 
             VStack(
                 alignment: .leading,
@@ -146,62 +171,131 @@ struct ReportsView: View {
             ) {
 
                 Text("Reportes")
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .bold
-                        )
-                    )
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(AppColors.primaryText)
 
                 Text("Archivos generados por el sistema")
                     .font(.system(size: 14))
                     .foregroundColor(AppColors.secondaryText)
+
+                if AppState.shared.isHistoricalMode,
+                let label = AppState.shared.selectedHistoricalLabel {
+
+                    Text("Modo histórico · \(label)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.orange)
+                        .padding(.top, 4)
+                }
+
+                if reportsVM.hasActiveFilters {
+
+                    Text("Filtros activos")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.blue)
+                        .padding(.top, 2)
+                }
             }
 
             Spacer()
 
-            Button {
+            HStack(spacing: 6) {
 
-                showPicker = true
+                Button {
 
-            } label: {
+                    showReportAutomation = true
 
-                ZStack {
+                } label: {
 
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: "arrow.up.doc.fill")
-                        .font(.system(size: 17, weight: .semibold))
+                    Image(systemName: "clock.badge.checkmark")
+                        .font(.system(size: 23, weight: .semibold))
                         .foregroundColor(AppColors.primaryText)
+                        .frame(width: 44, height: 44)
+                }
+
+                Button {
+
+                    showReportsFilters = true
+
+                } label: {
+
+                    ZStack(alignment: .topTrailing) {
+
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 25, weight: .semibold))
+                            .foregroundColor(
+                                reportsVM.hasActiveFilters
+                                ? AppColors.blue
+                                : AppColors.primaryText
+                            )
+                            .frame(width: 44, height: 44)
+
+                        if reportsVM.hasActiveFilters {
+
+                            Circle()
+                                .fill(AppColors.orange)
+                                .frame(width: 9, height: 9)
+                                .offset(x: -5, y: 5)
+                        }
+                    }
                 }
             }
         }
     }
 
-    private var uploadStatusSection: some View {
+   private var uploadStatusSection: some View {
 
         Group {
 
-            if uploadVM.uploadSuccess {
+            if uploadVM.uploadSuccess || uploadVM.pipelineExecuted {
 
                 RoundedContainer {
 
-                    HStack(spacing: 12) {
+                    VStack(
+                        alignment: .leading,
+                        spacing: 14
+                    ) {
 
-                        Image(systemName: "checkmark.circle.fill")
+                        HStack(spacing: 12) {
+
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(AppColors.green)
+
+                            Text(
+                                uploadVM.pipelineExecuted
+                                ? "Análisis ejecutado correctamente"
+                                : "Archivo subido correctamente"
+                            )
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(AppColors.green)
 
-                        Text(
-                            uploadVM.pipelineExecuted
-                            ? "Archivo procesado correctamente"
-                            : "Archivo subido correctamente"
-                        )
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(AppColors.green)
+                            Spacer()
+                        }
 
-                        Spacer()
+                        if uploadVM.uploadSuccess && !uploadVM.pipelineExecuted {
+
+                            Button {
+
+                                Task {
+                                    await uploadVM.runPipeline()
+                                    await reportsVM.loadReports()
+                                }
+
+                            } label: {
+
+                                HStack(spacing: 8) {
+
+                                    Image(systemName: "play.fill")
+
+                                    Text("Ejecutar análisis")
+                                }
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 46)
+                                .background(AppColors.primaryText)
+                                .cornerRadius(16)
+                            }
+                        }
                     }
                     .padding()
                 }

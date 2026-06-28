@@ -5,13 +5,13 @@ import Combine
 final class UploadViewModel: ObservableObject {
 
     @Published var isUploading = false
+    @Published var isRunningPipeline = false
 
     @Published var uploadSuccess = false
-
     @Published var errorMessage: String?
     @Published var pipelineExecuted = false
 
-    private let service = UploadService()
+    private let service = UploadService()   
 
     func uploadFile(url: URL) async {
 
@@ -49,6 +49,24 @@ final class UploadViewModel: ObservableObject {
             )
 
             uploadSuccess = true
+
+        } catch {
+
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func runPipeline() async {
+
+        isRunningPipeline = true
+        errorMessage = nil
+        pipelineExecuted = false
+
+        defer {
+            isRunningPipeline = false
+        }
+
+        do {
 
             try await service.runPipeline()
 

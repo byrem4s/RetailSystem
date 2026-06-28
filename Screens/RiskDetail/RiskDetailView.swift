@@ -6,8 +6,7 @@ struct RiskDetailView: View {
     let isAddingToF8: Bool
     let onAddToF8: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
-
+    @SwiftUI.Environment(\.dismiss) private var dismiss
     private var current: RiskDetailCurrentDTO {
         detail.current
     }

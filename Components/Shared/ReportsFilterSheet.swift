@@ -14,8 +14,8 @@ struct ReportsFilterSheet: View {
     let onApply: () -> Void
     let onClear: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
-
+    @SwiftUI.Environment(\.dismiss) private var dismiss
+    
     var body: some View {
 
         NavigationView {

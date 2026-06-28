@@ -140,6 +140,19 @@ final class APIClient {
         }
     }
 
+    func makeURL(
+        endpoint: String
+    ) throws -> URL {
+
+        guard let url = URL(
+            string: baseURL + endpoint
+        ) else {
+            throw NetworkError.invalidURL
+        }
+
+        return url
+    }
+
     func put<T: Decodable>(
         endpoint: String,
         responseType: T.Type

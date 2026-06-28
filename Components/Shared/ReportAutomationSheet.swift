@@ -4,8 +4,8 @@ struct ReportAutomationSheet: View {
 
     @ObservedObject var vm: ReportAutomationViewModel
 
-    @Environment(\.dismiss) private var dismiss
-
+    @SwiftUI.Environment(\.dismiss) private var dismiss
+    
     private let weekdayOptions: [(Int, String)] = [
         (0, "Lunes"),
         (1, "Martes"),

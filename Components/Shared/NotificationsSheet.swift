@@ -4,8 +4,8 @@ struct NotificationsSheet: View {
 
     @ObservedObject var vm: NotificationViewModel
 
-    @Environment(\.dismiss) private var dismiss
-
+    @SwiftUI.Environment(\.dismiss) private var dismiss
+    
     var body: some View {
 
         NavigationView {

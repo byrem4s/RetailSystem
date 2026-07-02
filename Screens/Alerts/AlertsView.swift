@@ -68,7 +68,7 @@ struct AlertsView: View {
                 .padding(.bottom, 105)
             }
 
-            if vm.isLoading {
+            if vm.isLoading || vm.isRiskDetailLoading || vm.isAddingRiskToF8 {
 
                 Color.black.opacity(0.20)
                     .ignoresSafeArea()
@@ -89,6 +89,24 @@ struct AlertsView: View {
         } message: {
             Text(vm.errorMessage ?? "")
         }
+
+        .sheet(
+            item: $vm.selectedRiskDetail
+        ) { detail in
+
+            RiskDetailView(
+                detail: detail,
+                isAddingToF8: vm.isAddingRiskToF8,
+                onAddToF8: {
+                    Task {
+                        await vm.addRiskRecommendationToF8(
+                            riskKey: detail.id
+                        )
+                    }
+                }
+            )
+        }
+
         .task {
             await vm.loadAlerts()
         }
@@ -180,16 +198,16 @@ struct AlertsView: View {
         icon: String
     ) -> some View {
 
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
 
             ZStack {
 
                 RoundedRectangle(cornerRadius: 18)
                     .fill(Color.white.opacity(0.18))
-                    .frame(width: 48, height: 48)
+                    .frame(width: 46, height: 46)
 
                 Image(systemName: icon)
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.white)
             }
 
@@ -199,18 +217,23 @@ struct AlertsView: View {
             ) {
 
                 Text(value)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 25, weight: .bold))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
 
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.92))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(14)
         .frame(maxWidth: .infinity)
+        .frame(height: 82)
         .background(color)
         .cornerRadius(20)
     }
@@ -567,6 +590,12 @@ struct AlertsView: View {
 
                 Button {
 
+                    Task {
+                        await vm.openRiskDetail(
+                            riskKey: item.resolvedRiskKey
+                        )
+                    }
+
                 } label: {
 
                     HStack(spacing: 8) {
@@ -586,8 +615,15 @@ struct AlertsView: View {
                     )
                     .cornerRadius(14)
                 }
+                .disabled(vm.isRiskDetailLoading || vm.isAddingRiskToF8)
 
                 Button {
+
+                    Task {
+                        await vm.addRiskRecommendationToF8(
+                            riskKey: item.resolvedRiskKey
+                        )
+                    }
 
                 } label: {
 
@@ -604,6 +640,7 @@ struct AlertsView: View {
                     .background(color)
                     .cornerRadius(14)
                 }
+                .disabled(vm.isAddingRiskToF8 || AppState.shared.isHistoricalMode)
             }
         }
         .padding(16)

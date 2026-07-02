@@ -7,6 +7,9 @@ struct BranchesView: View {
     @State private var selectedFilter = "Ranking"
     @State private var showAllBranches = false
 
+    @State private var selectedFilter = "Ranking"
+    @State private var showAllBranches = false
+
     private let filters = [
         "Ranking",
         "Quiebre",
@@ -16,29 +19,40 @@ struct BranchesView: View {
 
     private var filteredRanking: [BranchRankingDTO] {
 
-        switch selectedFilter {
+    let searched = vm.ranking.filter { item in
 
-        case "Quiebre":
-            return vm.ranking.sorted {
-                $0.issues.breakRisk > $1.issues.breakRisk
-            }
+        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
 
-        case "Sobrestock":
-            return vm.ranking.sorted {
-                $0.issues.overstock > $1.issues.overstock
-            }
+        return item.branch.localizedCaseInsensitiveContains(
+            searchText
+        )
+    }
 
-        case "Sin rot.":
-            return vm.ranking.sorted {
-                $0.issues.noRotation > $1.issues.noRotation
-            }
+    switch selectedFilter {
 
-        default:
-            return vm.ranking.sorted {
-                $0.health > $1.health
-            }
+    case "Quiebre":
+        return searched.sorted {
+            $0.issues.breakRisk > $1.issues.breakRisk
+        }
+
+    case "Sobrestock":
+        return searched.sorted {
+            $0.issues.overstock > $1.issues.overstock
+        }
+
+    case "Sin rot.":
+        return searched.sorted {
+            $0.issues.noRotation > $1.issues.noRotation
+        }
+
+    default:
+        return searched.sorted {
+            $0.health > $1.health
         }
     }
+}
 
     private var visibleRanking: [BranchRankingDTO] {
 
@@ -59,6 +73,10 @@ struct BranchesView: View {
                 ) {
 
                     headerSection
+
+                    if showSearch {
+                        searchSection
+                    }
 
                     summarySection
 
@@ -92,81 +110,171 @@ struct BranchesView: View {
             }
         }
         .background(AppColors.background)
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { _ in vm.errorMessage = nil }
-            )
-        )
-        .sheet(
-            item: $vm.selectedRiskDetail
-        ) { detail in
-
-            RiskDetailView(
-                detail: detail,
-                isAddingToF8: vm.isAddingRiskToF8,
-                onAddToF8: {
-                    Task {
-                        await vm.addRiskRecommendationToF8(
-                            riskKey: detail.id
-                        )
+            .alert(
+                "Error",
+                isPresented: Binding<Bool>(
+                    get: {
+                        vm.errorMessage != nil
+                    },
+                    set: { _ in
+                        vm.errorMessage = nil
                     }
+                ),
+                actions: {
+                    Button("OK", role: .cancel) {
+                        vm.errorMessage = nil
+                    }
+                },
+                message: {
+                    Text(vm.errorMessage ?? "")
                 }
             )
-        } {
-            Button("OK") {}
-        } message: {
-            Text(vm.errorMessage ?? "")
-        }
-        .task {
-            await vm.loadData()
-        }
-        .onReceive(AppState.shared.$refreshID) { _ in
-            Task {
+            .sheet(
+                item: $vm.selectedRiskDetail
+            ) { detail in
+
+                RiskDetailView(
+                    detail: detail,
+                    isAddingToF8: vm.isAddingRiskToF8,
+                    onAddToF8: {
+                        Task {
+                            await vm.addRiskRecommendationToF8(
+                                riskKey: detail.id
+                            )
+                        }
+                    }
+                )
+            }
+            .task {
                 await vm.loadData()
             }
-        }
+            .onReceive(AppState.shared.$refreshID) { _ in
+                Task {
+                    await vm.loadData()
+                }
+            }
     }
 
     private var headerSection: some View {
 
-        HStack {
+    HStack {
 
-            VStack(
-                alignment: .leading,
-                spacing: 4
+        VStack(
+            alignment: .leading,
+            spacing: 4
+        ) {
+
+            Text("Sucursales")
+                .font(
+                    .system(
+                        size: 34,
+                        weight: .bold
+                    )
+                )
+
+            Text("Salud y desempeño de cada sucursal")
+                .font(.system(size: 14))
+                .foregroundColor(AppColors.secondaryText)
+        }
+
+        Spacer()
+
+        HStack(spacing: 10) {
+
+            headerIcon(
+                "magnifyingglass"
             ) {
 
-                Text("Sucursales")
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .bold
-                        )
-                    )
+                withAnimation(.easeInOut) {
+                    showSearch.toggle()
+                }
 
-                Text("Salud y desempeño de cada sucursal")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.secondaryText)
+                if !showSearch {
+                    searchText = ""
+                }
             }
 
-            Spacer()
+            Menu {
 
-            HStack(spacing: 10) {
+                ForEach(filters, id: \.self) { filter in
 
-                headerIcon("magnifyingglass")
+                    Button {
 
-                headerIcon("line.3.horizontal.decrease")
+                        selectedFilter = filter
+                        showAllBranches = false
+
+                    } label: {
+
+                        HStack {
+
+                            Text(filter)
+
+                            if selectedFilter == filter {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+
+            } label: {
+
+                ZStack {
+
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                }
             }
         }
     }
+}
+
+    private var searchSection: some View {
+
+    HStack(spacing: 10) {
+
+        Image(systemName: "magnifyingglass")
+            .foregroundColor(AppColors.secondaryText)
+
+        TextField(
+            "Buscar sucursal",
+            text: $searchText
+        )
+        .font(.system(size: 15))
+        .textInputAutocapitalization(.never)
+        .disableAutocorrection(true)
+
+        if !searchText.isEmpty {
+
+            Button {
+
+                searchText = ""
+
+            } label: {
+
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(AppColors.secondaryText)
+            }
+        }
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 13)
+    .background(Color.white)
+    .cornerRadius(18)
+}
 
     private func headerIcon(
-        _ icon: String
+        _ icon: String,
+        action: @escaping () -> Void
     ) -> some View {
 
         Button {
+
+            action()
 
         } label: {
 
@@ -380,7 +488,7 @@ struct BranchesView: View {
                             Text(
                                 showAllBranches
                                 ? "Mostrar menos"
-                                : "Ver todas las sucursales (22)"
+                                : "Ver todas las sucursales (\(filteredRanking.count))"
                             )
 
                             Image(
@@ -830,7 +938,7 @@ struct BranchesView: View {
 
             Task {
                 await vm.openRiskDetail(
-                    riskKey: product.id
+                    riskKey: product.resolvedRiskKey
                 )
             }
 

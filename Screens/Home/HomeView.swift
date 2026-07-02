@@ -154,22 +154,42 @@ struct HomeView: View {
         .background(AppColors.background)
         .alert(
             "Error",
-            isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { _ in vm.errorMessage = nil }
-            )
+            isPresented: Binding<Bool>(
+                get: {
+                    vm.errorMessage != nil
+                },
+                set: { _ in
+                    vm.errorMessage = nil
+                }
+            ),
+            actions: {
+                Button("OK", role: .cancel) {
+                    vm.errorMessage = nil
+                }
+            },
+            message: {
+                Text(vm.errorMessage ?? "")
+            }
         )
         .alert(
             "Sin información",
-            isPresented: Binding(
-                get: { vm.historyMessage != nil },
-                set: { _ in vm.historyMessage = nil }
-            )
-        ) {
-            Button("OK") {}
-        } message: {
-            Text(vm.historyMessage ?? "")
-        } 
+            isPresented: Binding<Bool>(
+                get: {
+                    vm.historyMessage != nil
+                },
+                set: { _ in
+                    vm.historyMessage = nil
+                }
+            ),
+            actions: {
+                Button("OK", role: .cancel) {
+                    vm.historyMessage = nil
+                }
+            },
+            message: {
+                Text(vm.historyMessage ?? "")
+            }
+        )
         .sheet(
             isPresented: $showAnalysisDateSelector
         ) {
@@ -198,10 +218,14 @@ struct HomeView: View {
                     }
                 }
             )
-        }{
-            Button("OK") {}
-        } message: {
-            Text(vm.errorMessage ?? "")
+        }
+        .sheet(
+            isPresented: $showNotifications
+        ) {
+
+            NotificationsSheet(
+                vm: notificationsVM
+            )
         }
         .task {
             await vm.loadData()
@@ -212,15 +236,6 @@ struct HomeView: View {
                 await vm.loadData()
                 await notificationsVM.loadUnreadCount()
             }
-        }
-
-        .sheet(
-            isPresented: $showNotifications
-        ) {
-
-            NotificationsSheet(
-                vm: notificationsVM
-            )
         }
     }
 

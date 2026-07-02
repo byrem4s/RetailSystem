@@ -1,5 +1,5 @@
 import Foundation
-import combine
+import Combine
 
 @MainActor
 final class AlertsViewModel: ObservableObject {

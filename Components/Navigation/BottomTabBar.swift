@@ -6,7 +6,7 @@ struct BottomTabBar: View {
 
     var body: some View {
 
-        HStack {
+        HStack(spacing: 0) {
 
             tabButton(
                 tab: .home,
@@ -38,14 +38,16 @@ struct BottomTabBar: View {
                 title: "Reports"
             )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 6)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .frame(maxWidth: .infinity)
         .background(AppColors.card)
-        .cornerRadius(28)
-        .shadow(
-            color: AppColors.shadow,
-            radius: 12,
-            y: 4
+        .overlay(
+            Rectangle()
+                .fill(Color.gray.opacity(0.12))
+                .frame(height: 1),
+            alignment: .top
         )
     }
 
@@ -80,7 +82,7 @@ struct BottomTabBar: View {
                 : AppColors.secondaryText
             )
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 3)
+            .padding(.vertical, 5)
         }
     }
 }

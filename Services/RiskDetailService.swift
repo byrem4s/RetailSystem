@@ -6,10 +6,9 @@ final class RiskDetailService {
         riskKey: String
     ) async throws -> RiskDetailDTO {
 
-        let encodedRiskKey = riskKey
-            .addingPercentEncoding(
-                withAllowedCharacters: .urlPathAllowed
-            ) ?? riskKey
+        let encodedRiskKey = encodePathComponent(
+            riskKey
+        )
 
         var endpoint = "/risk-details/\(encodedRiskKey)"
 
@@ -32,15 +31,30 @@ final class RiskDetailService {
         if AppState.shared.isHistoricalMode {
             return
         }
-        let encodedRiskKey = riskKey
-            .addingPercentEncoding(
-                withAllowedCharacters: .urlPathAllowed
-            ) ?? riskKey
+
+        let encodedRiskKey = encodePathComponent(
+            riskKey
+        )
 
         _ = try await APIClient.shared.post(
             endpoint: "/alert-actions/recommendation/\(encodedRiskKey)/add-to-f8",
             body: EmptyBodyDTO(),
             responseType: RiskActionStatusResponseDTO.self
         )
+    }
+
+    private func encodePathComponent(
+        _ value: String
+    ) -> String {
+
+        var allowed = CharacterSet.urlPathAllowed
+
+        allowed.remove(
+            charactersIn: "/?#[]@!$&'()*+,;="
+        )
+
+        return value.addingPercentEncoding(
+            withAllowedCharacters: allowed
+        ) ?? value
     }
 }

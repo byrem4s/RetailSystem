@@ -83,9 +83,25 @@ struct BranchDetailDTO: Decodable, Identifiable {
 struct BranchRiskProductDTO: Decodable, Identifiable {
 
     let id: String
+    let riskKey: String?
+
     let name: String
     let status: String
     let stock: Int
     let needed: Int
     let priority: String
+
+    var resolvedRiskKey: String {
+        riskKey ?? id
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case riskKey = "risk_key"
+        case name
+        case status
+        case stock
+        case needed
+        case priority
+    }
 }

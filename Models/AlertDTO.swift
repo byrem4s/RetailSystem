@@ -17,6 +17,8 @@ struct AlertSummaryDTO: Decodable {
 struct AlertDTO: Decodable, Identifiable {
 
     let id: String
+    let riskKey: String?
+
     let priority: String
     let type: String
     let title: String
@@ -32,8 +34,13 @@ struct AlertDTO: Decodable, Identifiable {
     let reason: String
     let createdAt: String
 
+    var resolvedRiskKey: String {
+        riskKey ?? id
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
+        case riskKey = "risk_key"
         case priority
         case type
         case title

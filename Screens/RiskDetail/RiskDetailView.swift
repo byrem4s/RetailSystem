@@ -6,6 +6,11 @@ struct RiskDetailView: View {
     let isAddingToF8: Bool
     let onAddToF8: () -> Void
 
+    @State private var localAlreadyAdded = false
+    @State private var localCanAddToF8 = true
+    @State private var localMessage: String?
+    @State private var showLocalMessage = false
+
     @SwiftUI.Environment(\.dismiss) private var dismiss
     private var current: RiskDetailCurrentDTO {
         detail.current
@@ -39,13 +44,15 @@ struct RiskDetailView: View {
                     historicalInfoSection
                 }
 
-                if let comparison = detail.comparison {
-                    comparisonSection(
-                        comparison
-                    )
-                }
+                if let comparison = detail.comparison,
+                    hasUsefulComparison(comparison) {
 
-                historySection
+                        comparisonSection(
+                            comparison
+                        )
+                    }
+
+                    historySection
             }
             .padding(18)
             .padding(.bottom, 24)
@@ -224,27 +231,83 @@ struct RiskDetailView: View {
 
                 recommendationRow(
                     title: "Origen sugerido",
-                    value: recommendation.suggestedOrigin
+                    value: recommendation.suggestedOrigin.isEmpty
+                    ? "Sin origen disponible"
+                    : recommendation.suggestedOrigin
                 )
 
                 recommendationRow(
                     title: "Destino sugerido",
-                    value: recommendation.suggestedDestination
+                    value: recommendation.suggestedDestination.isEmpty
+                    ? "Sin destino disponible"
+                    : recommendation.suggestedDestination
                 )
 
                 recommendationRow(
                     title: "Cantidad sugerida",
                     value: "\(recommendation.suggestedQuantity) u."
                 )
+
+                if let message = recommendation.actionMessage,
+                !message.isEmpty {
+
+                    HStack(alignment: .top, spacing: 8) {
+
+                        Image(
+                            systemName: recommendation.canAddToF8
+                            ? "checkmark.circle.fill"
+                            : "exclamationmark.triangle.fill"
+                        )
+                        .foregroundColor(
+                            recommendation.canAddToF8
+                            ? AppColors.green
+                            : AppColors.orange
+                        )
+
+                        Text(message)
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(
+                        (
+                            recommendation.canAddToF8
+                            ? AppColors.green
+                            : AppColors.orange
+                        )
+                        .opacity(0.10)
+                    )
+                    .cornerRadius(14)
+                }
             }
 
             Button {
 
+                if recommendation?.alreadyAdded == true || localAlreadyAdded {
+
+                    localMessage = "Este producto ya fue agregado al F8."
+                    showLocalMessage = true
+                    return
+                }
+
+                if !canAddToF8 {
+
+                    localMessage = recommendation?.actionMessage ?? "Esta recomendación no se puede agregar al F8."
+                    showLocalMessage = true
+                    return
+                }
+
                 onAddToF8()
+
+                localAlreadyAdded = true
+                localCanAddToF8 = false
+                localMessage = "Recomendación agregada al F8 correctamente."
+                showLocalMessage = true
 
             } label: {
 
-                HStack {
+                HStack(spacing: 8) {
 
                     if isAddingToF8 {
 
@@ -253,29 +316,40 @@ struct RiskDetailView: View {
 
                     } else {
 
-                        Image(systemName: "plus.circle.fill")
+                        Image(
+                            systemName: localAlreadyAdded || recommendation?.alreadyAdded == true
+                            ? "checkmark.circle.fill"
+                            : "plus.circle.fill"
+                        )
                     }
 
-                    Text(
-                        isAddingToF8
-                        ? "Agregando..."
-                        : "Agregar al F8"
-                    )
+                    Text(addButtonTitle)
                 }
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .frame(height: 48)
                 .background(
-                    recommendation.canAddToF8
+                    canAddToF8
                     ? AppColors.blue
-                    : Color.gray.opacity(0.45)
+                    : Color.gray.opacity(0.55)
                 )
                 .cornerRadius(16)
             }
-            .disabled(
-                !recommendation.canAddToF8 || isAddingToF8
-            )
+            .disabled(isAddingToF8)
+            .alert(
+                "F8",
+                isPresented: $showLocalMessage
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(localMessage ?? "")
+            }
+            .onAppear {
+
+                localAlreadyAdded = recommendation?.alreadyAdded == true
+                localCanAddToF8 = recommendation?.canAddToF8 == true
+            }
         }
         .padding(18)
         .background(Color.white)
@@ -291,29 +365,33 @@ struct RiskDetailView: View {
             spacing: 12
         ) {
 
-            Text("Comparación")
+            Text("Comparación histórica")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(AppColors.primaryText)
+
+            Text("Diferencia entre el análisis actual y el análisis anterior disponible.")
+                .font(.system(size: 13))
+                .foregroundColor(AppColors.secondaryText)
 
             HStack(spacing: 12) {
 
                 comparisonCard(
                     title: "Tendencia",
-                    value: comparison.trend,
+                    value: comparisonTrendText(comparison.trend),
                     color: trendColor(comparison.impact)
                 )
 
                 comparisonCard(
                     title: "Impacto",
-                    value: comparison.impact,
+                    value: comparisonImpactText(comparison.impact),
                     color: trendColor(comparison.impact)
                 )
             }
 
             if let previous = comparison.previousResidualNeed,
-               let current = comparison.currentResidualNeed {
+            let current = comparison.currentResidualNeed {
 
-                Text("Pendiente anterior: \(previous) u. → actual: \(current) u.")
+                Text("Pendiente anterior: \(previous) u. → pendiente actual: \(current) u.")
                     .font(.system(size: 13))
                     .foregroundColor(AppColors.secondaryText)
             }
@@ -330,13 +408,17 @@ struct RiskDetailView: View {
             spacing: 12
         ) {
 
-            Text("Historial")
+            Text("Evolución histórica")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(AppColors.primaryText)
 
+            Text("Últimos análisis donde apareció este producto/talle.")
+                .font(.system(size: 13))
+                .foregroundColor(AppColors.secondaryText)
+
             if detail.history.isEmpty {
 
-                Text("No hay historial suficiente para este producto.")
+                Text("Sin historial suficiente para comparar este producto.")
                     .font(.system(size: 14))
                     .foregroundColor(AppColors.secondaryText)
 
@@ -441,10 +523,11 @@ struct RiskDetailView: View {
                 spacing: 3
             ) {
 
-                Text("Run \(item.executionID)")
+                Text(historyTitle(item))
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.primaryText)
 
-                Text(item.createdAt)
+                Text(historySubtitle(item))
                     .font(.system(size: 11))
                     .foregroundColor(AppColors.secondaryText)
             }
@@ -453,7 +536,7 @@ struct RiskDetailView: View {
 
             VStack(alignment: .trailing, spacing: 3) {
 
-                Text(item.priority)
+                Text(priorityDisplayName(item.priority))
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(priorityColor(item.priority))
 
@@ -465,6 +548,119 @@ struct RiskDetailView: View {
         .padding(.vertical, 8)
     }
 
+    private func hasUsefulComparison(
+        _ comparison: RiskDetailComparisonDTO
+    ) -> Bool {
+
+        if comparison.previousResidualNeed != nil {
+            return true
+        }
+
+        if comparison.currentResidualNeed != nil {
+            return true
+        }
+
+        if !comparison.trend.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+
+        if !comparison.impact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+
+        return false
+    }
+
+    private func historyTitle(
+        _ item: RiskDetailHistoryPointDTO
+    ) -> String {
+
+        if item.executionID <= 0 {
+            return "Análisis histórico"
+        }
+
+        return "Análisis #\(item.executionID)"
+    }
+
+    private func historySubtitle(
+        _ item: RiskDetailHistoryPointDTO
+    ) -> String {
+
+        if item.createdAt.isEmpty {
+            return "Fecha no disponible"
+        }
+
+        return item.createdAt
+    }
+
+    private func comparisonTrendText(
+        _ value: String
+    ) -> String {
+
+        switch value.uppercased() {
+
+        case "IMPROVING":
+            return "Mejorando"
+
+        case "WORSENING":
+            return "Empeorando"
+
+        case "STABLE":
+            return "Estable"
+
+        case "NEW":
+            return "Nuevo riesgo"
+
+        default:
+            return value.isEmpty ? "Sin dato" : value
+        }
+    }
+
+    private func comparisonImpactText(
+        _ value: String
+    ) -> String {
+
+        switch value.uppercased() {
+
+        case "POSITIVE":
+            return "Positivo"
+
+        case "NEGATIVE":
+            return "Negativo"
+
+        case "ATTENTION":
+            return "Requiere atención"
+
+        case "NEUTRAL":
+            return "Neutro"
+
+        default:
+            return value.isEmpty ? "Sin dato" : value
+        }
+    }
+
+    private func priorityDisplayName(
+        _ priority: String
+    ) -> String {
+
+        switch priority.uppercased() {
+
+        case "CRITICAL":
+            return "Crítico"
+
+        case "HIGH":
+            return "Alto"
+
+        case "MEDIUM":
+            return "Medio"
+
+        case "LOW":
+            return "Bajo"
+
+        default:
+            return priority
+        }
+    }
     private func priorityBadge(
         _ priority: String
     ) -> some View {
@@ -544,5 +740,43 @@ struct RiskDetailView: View {
         .padding(18)
         .background(Color.white)
         .cornerRadius(24)
+    }
+
+    private var recommendation: RiskDetailRecommendationDTO? {
+        detail.recommendation
+    }
+
+    private var canAddToF8: Bool {
+
+        guard let recommendation else {
+            return false
+        }
+
+        if localAlreadyAdded {
+            return false
+        }
+
+        if AppState.shared.isHistoricalMode {
+            return false
+        }
+
+        return localCanAddToF8 && recommendation.canAddToF8 && !recommendation.alreadyAdded
+    }
+
+    private var addButtonTitle: String {
+
+        if isAddingToF8 {
+            return "Agregando..."
+        }
+
+        if localAlreadyAdded || recommendation?.alreadyAdded == true {
+            return "Agregado al F8"
+        }
+
+        if recommendation?.canAddToF8 == false {
+            return "Sin origen disponible"
+        }
+
+        return "Agregar al F8"
     }
 }

@@ -26,17 +26,17 @@ final class RiskDetailService {
 
     func addRecommendationToF8(
         riskKey: String
-    ) async throws {
+    ) async throws -> RiskActionStatusResponseDTO {
 
         if AppState.shared.isHistoricalMode {
-            return
+            throw RiskDetailUserError.historicalMode
         }
 
         let encodedRiskKey = encodePathComponent(
             riskKey
         )
 
-        _ = try await APIClient.shared.post(
+        return try await APIClient.shared.post(
             endpoint: "/alert-actions/recommendation/\(encodedRiskKey)/add-to-f8",
             body: EmptyBodyDTO(),
             responseType: RiskActionStatusResponseDTO.self
@@ -56,5 +56,27 @@ final class RiskDetailService {
         return value.addingPercentEncoding(
             withAllowedCharacters: allowed
         ) ?? value
+    }
+}
+
+enum RiskDetailUserError: LocalizedError {
+
+    case historicalMode
+    case alreadyAdded
+    case notActionable
+
+    var errorDescription: String? {
+
+        switch self {
+
+        case .historicalMode:
+            return "No se puede modificar el F8 desde el modo histórico."
+
+        case .alreadyAdded:
+            return "Este producto ya fue agregado al F8."
+
+        case .notActionable:
+            return "Esta recomendación no se puede agregar al F8."
+        }
     }
 }

@@ -79,7 +79,7 @@ struct AlertsView: View {
         }
         .background(AppColors.background)
         .alert(
-            "Error",
+            "Aviso",
             isPresented: Binding(
                 get: { vm.errorMessage != nil },
                 set: { _ in vm.errorMessage = nil }
@@ -619,6 +619,12 @@ struct AlertsView: View {
 
                 Button {
 
+                    if item.resolvedRiskKey.isEmpty {
+
+                        vm.errorMessage = "No se pudo identificar la recomendación."
+                        return
+                    }
+
                     Task {
                         await vm.addRiskRecommendationToF8(
                             riskKey: item.resolvedRiskKey
@@ -629,18 +635,35 @@ struct AlertsView: View {
 
                     HStack(spacing: 8) {
 
-                        Text("Tomar acción")
+                        if vm.isAddingRiskToF8 {
 
-                        Image(systemName: "chevron.right")
+                            ProgressView()
+                                .tint(.white)
+
+                            Text("Agregando...")
+
+                        } else {
+
+                            Text("Tomar acción")
+
+                            Image(systemName: "chevron.right")
+                        }
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(color)
+                    .background(
+                        vm.isAddingRiskToF8 || AppState.shared.isHistoricalMode
+                        ? Color.gray.opacity(0.55)
+                        : color
+                    )
                     .cornerRadius(14)
                 }
-                .disabled(vm.isAddingRiskToF8 || AppState.shared.isHistoricalMode)
+                .disabled(
+                    vm.isAddingRiskToF8
+                    || AppState.shared.isHistoricalMode
+                )
             }
         }
         .padding(16)

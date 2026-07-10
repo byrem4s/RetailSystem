@@ -7,8 +7,9 @@ struct BranchesView: View {
     @State private var selectedFilter = "Ranking"
     @State private var showAllBranches = false
 
-    @State private var selectedFilter = "Ranking"
-    @State private var showAllBranches = false
+    @State private var showSearch = false
+    @State private var searchText = ""
+    @State private var showBranchFullDetail = false 
 
     private let filters = [
         "Ranking",
@@ -111,22 +112,28 @@ struct BranchesView: View {
         }
         .background(AppColors.background)
             .alert(
-                "Error",
+                "Aviso",
                 isPresented: Binding<Bool>(
                     get: {
-                        vm.errorMessage != nil
+                        vm.errorMessage != nil || vm.successMessage != nil
                     },
                     set: { _ in
                         vm.errorMessage = nil
+                        vm.successMessage = nil
                     }
                 ),
                 actions: {
                     Button("OK", role: .cancel) {
                         vm.errorMessage = nil
+                        vm.successMessage = nil
                     }
                 },
                 message: {
-                    Text(vm.errorMessage ?? "")
+                    Text(
+                        vm.errorMessage
+                        ?? vm.successMessage
+                        ?? ""
+                    )
                 }
             )
             .sheet(
@@ -144,6 +151,41 @@ struct BranchesView: View {
                         }
                     }
                 )
+            }
+            .sheet(
+                isPresented: $showBranchFullDetail
+            ) {
+
+                if let branch = vm.selectedBranchDetail {
+
+                    BranchFullDetailSheet(
+                        branch: branch,
+                        onOpenRisk: { riskKey in
+
+                            showBranchFullDetail = false
+
+                            Task {
+
+                                try? await Task.sleep(
+                                    nanoseconds: 250_000_000
+                                )
+
+                                await vm.openRiskDetail(
+                                    riskKey: riskKey
+                                )
+                            }
+                        }
+                    )
+
+                } else {
+
+                    EmptyStateView(
+                        icon: "building.2",
+                        title: "Sin detalle disponible",
+                        message: "No se pudo cargar el detalle de la sucursal."
+                    )
+                    .padding()
+                }
             }
             .task {
                 await vm.loadData()
@@ -746,9 +788,18 @@ struct BranchesView: View {
 
                 Button {
 
+                    Task {
+
+                        await vm.selectBranch(
+                            branch.id
+                        )
+
+                        showBranchFullDetail = true
+                    }
+
                 } label: {
 
-                    Text("Ver detalle")
+                    Text("Detalle sucursal")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(AppColors.blue)
                         .padding(.horizontal, 14)
@@ -1000,6 +1051,301 @@ struct BranchesView: View {
             .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
+    }
+
+    private func healthColor(
+        _ health: Int
+    ) -> Color {
+
+        if health >= 85 {
+            return AppColors.green
+        }
+
+        if health >= 60 {
+            return AppColors.orange
+        }
+
+        return AppColors.red
+    }
+
+    private func productColor(
+        _ priority: String
+    ) -> Color {
+
+        let value = priority.uppercased()
+
+        if value == "CRITICAL" {
+            return AppColors.red
+        }
+
+        if value == "HIGH" {
+            return AppColors.orange
+        }
+
+        return AppColors.blue
+    }
+}
+struct BranchFullDetailSheet: View {
+
+    let branch: BranchDetailDTO
+    let onOpenRisk: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+
+        NavigationView {
+
+            ScrollView(showsIndicators: false) {
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 18
+                ) {
+
+                    headerSection
+
+                    summarySection
+
+                    riskProductsSection
+                }
+                .padding(18)
+                .padding(.bottom, 30)
+            }
+            .background(AppColors.background)
+            .navigationTitle("Detalle sucursal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+
+                ToolbarItem(
+                    placement: .topBarLeading
+                ) {
+
+                    Button("Cerrar") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var headerSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 12
+        ) {
+
+            HStack {
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
+
+                    Text(branch.branch)
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundColor(AppColors.primaryText)
+
+                    Text(branch.subtitle)
+                        .font(.system(size: 14))
+                        .foregroundColor(AppColors.secondaryText)
+                }
+
+                Spacer()
+
+                Text("\(branch.health)%")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(healthColor(branch.health))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        healthColor(branch.health).opacity(0.12)
+                    )
+                    .cornerRadius(14)
+            }
+
+            Text(branch.riskLevel)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(healthColor(branch.health))
+        }
+        .padding(18)
+        .background(Color.white)
+        .cornerRadius(24)
+    }
+
+    private var summarySection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            Text("Resumen de problemas")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
+
+            problemRow(
+                title: "Riesgo de quiebre",
+                value: branch.issues.breakRisk,
+                color: AppColors.red,
+                icon: "exclamationmark.triangle.fill"
+            )
+
+            problemRow(
+                title: "Sin rotación",
+                value: branch.issues.noRotation,
+                color: AppColors.orange,
+                icon: "clock.fill"
+            )
+
+            problemRow(
+                title: "Sobrestock",
+                value: branch.issues.overstock,
+                color: AppColors.blue,
+                icon: "shippingbox.fill"
+            )
+
+            problemRow(
+                title: "Curva incompleta",
+                value: branch.issues.incompleteCurve,
+                color: AppColors.green,
+                icon: "chart.bar.fill"
+            )
+        }
+        .padding(18)
+        .background(Color.white)
+        .cornerRadius(24)
+    }
+
+    private var riskProductsSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            HStack {
+
+                Text("Productos con riesgo")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppColors.primaryText)
+
+                Spacer()
+
+                Text("\(branch.riskProducts.count)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(AppColors.blue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(AppColors.blue.opacity(0.10))
+                    .cornerRadius(10)
+            }
+
+            if branch.riskProducts.isEmpty {
+
+                EmptyStateView(
+                    icon: "checkmark.circle",
+                    title: "Sin productos críticos",
+                    message: "No hay productos con riesgo para esta sucursal."
+                )
+
+            } else {
+
+                VStack(spacing: 10) {
+
+                    ForEach(branch.riskProducts) { product in
+
+                        Button {
+
+                            dismiss()
+
+                            onOpenRisk(
+                                product.resolvedRiskKey
+                            )
+
+                        } label: {
+
+                            HStack(spacing: 12) {
+
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(productColor(product.priority).opacity(0.10))
+                                    .frame(width: 48, height: 48)
+                                    .overlay(
+                                        Image(systemName: "shippingbox.fill")
+                                            .foregroundColor(productColor(product.priority))
+                                    )
+
+                                VStack(
+                                    alignment: .leading,
+                                    spacing: 4
+                                ) {
+
+                                    Text(product.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(AppColors.primaryText)
+                                        .lineLimit(2)
+
+                                    Text(product.status)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(productColor(product.priority))
+                                }
+
+                                Spacer()
+
+                                VStack(
+                                    alignment: .trailing,
+                                    spacing: 4
+                                ) {
+
+                                    Text("Stock \(product.stock)")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(AppColors.secondaryText)
+
+                                    Text("Necesita \(product.needed)")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(productColor(product.priority))
+                                }
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(AppColors.secondaryText)
+                            }
+                            .padding(12)
+                            .background(Color.white)
+                            .cornerRadius(18)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func problemRow(
+        title: String,
+        value: Int,
+        color: Color,
+        icon: String
+    ) -> some View {
+
+        HStack(spacing: 12) {
+
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .frame(width: 22)
+
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundColor(AppColors.primaryText)
+
+            Spacer()
+
+            Text("\(value)")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(color)
+        }
+        .padding(.vertical, 4)
     }
 
     private func healthColor(

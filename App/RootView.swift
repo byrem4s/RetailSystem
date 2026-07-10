@@ -8,36 +8,50 @@ struct RootView: View {
 
         ZStack(alignment: .bottom) {
 
-            Group {
+            currentScreen
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(AppColors.background)
 
-                switch selectedTab {
+            VStack(spacing: 0) {
 
-                case .home:
-                    HomeView(
-                        onOpenAlerts: {
-                            selectedTab = .alerts
-                        }
-                    )
+                Spacer(minLength: 0)
 
-                case .alerts:
-                    AlertsView()
-
-                case .activity:
-                    ActivityView()
-
-                case .branches:
-                    BranchesView()
-
-                case .reports:
-                    ReportsView()
-                }
+                BottomTabBar(
+                    selectedTab: $selectedTab
+                )
             }
-
-            BottomTabBar(selectedTab: $selectedTab)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 0)
+            .ignoresSafeArea(
+                .container,
+                edges: .bottom
+            )
         }
         .background(AppColors.background)
+    }
+
+    @ViewBuilder
+    private var currentScreen: some View {
+
+        switch selectedTab {
+
+        case .home:
+            HomeView(
+                onOpenAlerts: {
+                    selectedTab = .alerts
+                }
+            )
+
+        case .alerts:
+            AlertsView()
+
+        case .activity:
+            ActivityView()
+
+        case .branches:
+            BranchesView()
+
+        case .reports:
+            ReportsView()
+        }
     }
 }
 
@@ -46,4 +60,4 @@ struct RootView_Previews: PreviewProvider {
     static var previews: some View {
         RootView()
     }
-}
+}   

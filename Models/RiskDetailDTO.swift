@@ -122,17 +122,56 @@ struct RiskDetailComparisonDTO: Decodable {
     }
 }
 
+import Foundation
+
+struct RiskDetailAPIResponseDTO: Decodable {
+
+    let status: String
+    let data: RiskDetailDTO
+}
+
+struct RiskDetailDTO: Decodable, Identifiable {
+
+    let id: String
+    let branch: String
+    let productCode: String
+    let size: String
+    let priority: String
+    let stock: Int
+    let sold: Int
+    let needed: Int
+    let residualNeed: Int?
+    let recommendation: RiskDetailRecommendationDTO?
+    let comparison: RiskDetailComparisonDTO?
+    let history: [RiskDetailHistoryDTO]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case branch
+        case productCode = "product_code"
+        case size
+        case priority
+        case stock
+        case sold
+        case needed
+        case residualNeed = "residual_need"
+        case recommendation
+        case comparison
+        case history
+    }
+}
+
 struct RiskDetailRecommendationDTO: Decodable {
 
     let title: String
     let reason: String
     let confidence: String
-
     let suggestedOrigin: String
     let suggestedDestination: String
     let suggestedQuantity: Int
-
     let canAddToF8: Bool
+    let alreadyAdded: Bool
+    let actionMessage: String?
     let draftID: Int?
 
     enum CodingKeys: String, CodingKey {
@@ -143,8 +182,32 @@ struct RiskDetailRecommendationDTO: Decodable {
         case suggestedDestination = "suggested_destination"
         case suggestedQuantity = "suggested_quantity"
         case canAddToF8 = "can_add_to_f8"
+        case alreadyAdded = "already_added"
+        case actionMessage = "action_message"
         case draftID = "draft_id"
     }
+}
+
+struct RiskDetailComparisonDTO: Decodable {
+
+    let previousNeeded: Int?
+    let currentNeeded: Int?
+    let variation: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case previousNeeded = "previous_needed"
+        case currentNeeded = "current_needed"
+        case variation
+    }
+}
+
+struct RiskDetailHistoryDTO: Decodable, Identifiable {
+
+    let id: String
+    let label: String
+    let needed: Int?
+    let stock: Int?
+    let priority: String?
 }
 
 struct RiskActionStatusResponseDTO: Decodable {

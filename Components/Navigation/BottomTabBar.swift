@@ -6,52 +6,52 @@ struct BottomTabBar: View {
 
     var body: some View {
 
-        HStack(spacing: 0) {
+        VStack(spacing: 0) {
 
-            tabButton(
-                tab: .home,
-                icon: "house",
-                title: "Home"
-            )
-
-            tabButton(
-                tab: .alerts,
-                icon: "bell",
-                title: "Alerts"
-            )
-
-            tabButton(
-                tab: .activity,
-                icon: "arrow.left.arrow.right",
-                title: "Activity"
-            )
-
-            tabButton(
-                tab: .branches,
-                icon: "building.2",
-                title: "Branches"
-            )
-
-            tabButton(
-                tab: .reports,
-                icon: "doc.text",
-                title: "Reports"
-            )
-        }
-        .padding(.horizontal, 6)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .frame(maxWidth: .infinity)
-        .background(AppColors.card)
-        .overlay(
             Rectangle()
                 .fill(Color.gray.opacity(0.12))
-                .frame(height: 1),
-            alignment: .top
-        )
+                .frame(height: 1)
+
+            HStack(spacing: 0) {
+
+                tabButton(
+                    tab: .home,
+                    icon: "house",
+                    title: "Home"
+                )
+
+                tabButton(
+                    tab: .alerts,
+                    icon: "bell",
+                    title: "Alerts"
+                )
+
+                tabButton(
+                    tab: .activity,
+                    icon: "arrow.left.arrow.right",
+                    title: "Activity"
+                )
+
+                tabButton(
+                    tab: .branches,
+                    icon: "building.2",
+                    title: "Branches"
+                )
+
+                tabButton(
+                    tab: .reports,
+                    icon: "doc.text",
+                    title: "Reports"
+                )
+            }
+            .frame(height: 54)
+            .padding(.bottom, 7)
+        }
+        .frame(maxWidth: .infinity)
+        .background(AppColors.card)
     }
 
-    func tabButton(
+    private func tabButton(
         tab: AppTab,
         icon: String,
         title: String
@@ -63,18 +63,18 @@ struct BottomTabBar: View {
 
         } label: {
 
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
 
                 Image(systemName: icon)
                     .font(
                         .system(
-                            size: 17,
+                            size: 18,
                             weight: .semibold
                         )
                     )
 
                 Text(title)
-                    .font(.system(size: 10))
+                    .font(.system(size: 10, weight: .medium))
             }
             .foregroundColor(
                 selectedTab == tab
@@ -82,7 +82,10 @@ struct BottomTabBar: View {
                 : AppColors.secondaryText
             )
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 5)
+            .frame(height: 54, alignment: .bottom)
+            .padding(.bottom, 2)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }

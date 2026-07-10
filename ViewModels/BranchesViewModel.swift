@@ -16,6 +16,7 @@ final class BranchesViewModel: ObservableObject {
     @Published var isAddingRiskToF8 = false
 
     @Published var errorMessage: String?
+    @Published var successMessage: String?
 
     private let service = BranchesService()
     private let riskDetailService = RiskDetailService()
@@ -114,12 +115,18 @@ final class BranchesViewModel: ObservableObject {
         riskKey: String
     ) async {
 
+        if AppState.shared.isHistoricalMode {
+            errorMessage = "No se puede modificar el F8 desde el modo histórico."
+            return
+        }
+
         isAddingRiskToF8 = true
         errorMessage = nil
+        successMessage = nil
 
         do {
 
-            try await riskDetailService.addRecommendationToF8(
+            _ = try await riskDetailService.addRecommendationToF8(
                 riskKey: riskKey
             )
 
@@ -127,14 +134,44 @@ final class BranchesViewModel: ObservableObject {
                 riskKey: riskKey
             )
 
+            successMessage = "Recomendación agregada al F8 correctamente."
+
             AppState.shared.refreshSystem()
 
         } catch {
 
-            errorMessage = error.localizedDescription
+            errorMessage = userFriendlyF8Error(
+                from: error
+            )
         }
 
         isAddingRiskToF8 = false
+    }
+
+    private func userFriendlyF8Error(
+        from error: Error
+    ) -> String {
+
+        let message = error.localizedDescription.lowercased()
+
+        if message.contains("409")
+            || message.contains("conflict")
+            || message.contains("already")
+            || message.contains("duplic")
+            || message.contains("ya fue")
+            || message.contains("ya existe") {
+
+            return "Este producto ya fue agregado al F8."
+        }
+
+        if message.contains("origen")
+            || message.contains("stock")
+            || message.contains("disponible") {
+
+            return "No hay origen o stock disponible para agregar esta recomendación al F8."
+        }
+
+        return error.localizedDescription
     }
 
     private func loadBranchDetail(

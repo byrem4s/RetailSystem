@@ -6,8 +6,10 @@ struct ReportsView: View {
 
     @StateObject private var uploadVM = UploadViewModel()
     @StateObject private var reportsVM = ReportsViewModel()
+    @StateObject private var f8VM = F8DraftViewModel()
 
     @State private var showPicker = false
+    @State private var showF8Draft = false
 
     @State private var previewItem: ReportFileItem?
     @State private var shareItem: ReportFileItem?
@@ -16,6 +18,27 @@ struct ReportsView: View {
 
     @StateObject private var automationVM = ReportAutomationViewModel()
     @State private var showReportAutomation = false
+
+    private var loadingText: String {
+
+        if uploadVM.isUploading {
+            return "Subiendo archivo..."
+        }
+
+        if uploadVM.isRunningPipeline {
+            return "Ejecutando análisis..."
+        }
+
+        if reportsVM.isFileLoading {
+            return "Preparando archivo..."  
+        }
+
+        if reportsVM.isLoading {
+            return "Cargando reportes..."
+        }
+
+        return "Procesando..."
+    }
 
     var body: some View {
 
@@ -31,6 +54,8 @@ struct ReportsView: View {
                     headerSection
 
                     uploadStatusSection
+
+                    f8DraftSection
 
                     latestReportSection
 
@@ -86,10 +111,12 @@ struct ReportsView: View {
         }
         .task {
             await reportsVM.loadReports()
+            await f8VM.loadLatestDraft()
         }
         .onReceive(AppState.shared.$refreshID) { _ in
             Task {
                 await reportsVM.loadReports()
+                await f8VM.loadLatestDraft()
             }
         }
         .sheet(isPresented: $showPicker) {
@@ -157,6 +184,14 @@ struct ReportsView: View {
                 }
             )
         }
+        .sheet(
+            isPresented: $showF8Draft
+        ) {
+
+            F8DraftView(
+                vm: f8VM
+            )
+        }
     }
 
     private var headerSection: some View {
@@ -199,6 +234,18 @@ struct ReportsView: View {
             Spacer()
 
             HStack(spacing: 6) {
+
+                Button {
+
+                    showPicker = true
+
+                } label: {
+
+                    Image(systemName: "tray.and.arrow.up")
+                        .font(.system(size: 23, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                        .frame(width: 44, height: 44)
+                }
 
                 Button {
 
@@ -278,6 +325,7 @@ struct ReportsView: View {
                                 Task {
                                     await uploadVM.runPipeline()
                                     await reportsVM.loadReports()
+                                    await f8VM.loadLatestDraft()
                                 }
 
                             } label: {
@@ -625,6 +673,116 @@ struct ReportsView: View {
     }
 }
 
+private var f8DraftSection: some View {
+
+    RoundedContainer {
+
+        VStack(
+            alignment: .leading,
+            spacing: 16
+        ) {
+
+            HStack(alignment: .top, spacing: 12) {
+
+                ZStack {
+
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(AppColors.blue.opacity(0.10))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "tablecells")
+                        .foregroundColor(AppColors.blue)
+                }
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
+
+                    Text("F8 editable")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(AppColors.primaryText)
+
+                    Text(
+                        f8VM.draft == nil
+                        ? "Todavía no hay F8 borrador disponible."
+                        : "Revisá, editá y confirmá el pedido F8."
+                    )
+                    .font(.system(size: 13))
+                    .foregroundColor(AppColors.secondaryText)
+                }
+
+                Spacer()
+
+                if let draft = f8VM.draft {
+
+                    Text(draft.displayStatus)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(
+                            draft.isConfirmed
+                            ? AppColors.green
+                            : AppColors.orange
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            (
+                                draft.isConfirmed
+                                ? AppColors.green
+                                : AppColors.orange
+                            )
+                            .opacity(0.12)
+                        )
+                        .cornerRadius(10)
+                }
+            }
+
+            HStack(spacing: 12) {
+
+                Button {
+
+                    showPicker = true
+
+                } label: {
+
+                    HStack(spacing: 8) {
+
+                        Image(systemName: "tray.and.arrow.up")
+
+                        Text("Cargar archivo")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppColors.primaryText)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(AppColors.background)
+                    .cornerRadius(14)
+                }
+
+                Button {
+
+                    showF8Draft = true
+
+                } label: {
+
+                    HStack(spacing: 8) {
+
+                        Image(systemName: "square.and.pencil")
+
+                        Text("Ver F8")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(AppColors.blue)
+                    .cornerRadius(14)
+                }
+            }
+        }
+        .padding()
+    }
+}
 struct ReportFileItem: Identifiable {
 
     let id = UUID()

@@ -1090,7 +1090,7 @@ struct BranchFullDetailSheet: View {
     let branch: BranchDetailDTO
     let onOpenRisk: (String) -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    @SwiftUI.Environment(\.dismiss) private var dismiss
 
     var body: some View {
 

@@ -4,7 +4,7 @@ struct F8DraftView: View {
 
     @ObservedObject var vm: F8DraftViewModel
 
-    @Environment(\.dismiss) private var dismiss
+    @SwiftUI.Environment(\.dismiss) private var dismiss
 
     @State private var exportItem: ReportFileItem?
 
@@ -561,7 +561,7 @@ struct F8DraftEditRowSheet: View {
 
     let row: F8DraftRowDTO
 
-    @Environment(\.dismiss) private var dismiss
+    @SwiftUI.Environment(\.dismiss) private var dismiss
 
     @State private var origin: String
     @State private var destination: String

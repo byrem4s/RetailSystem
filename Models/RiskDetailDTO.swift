@@ -4,6 +4,7 @@ struct RiskDetailAPIResponseDTO: Decodable {
 
     let status: String
     let data: RiskDetailDTO
+    let message: String?
 }
 
 struct RiskDetailDTO: Decodable, Identifiable {
@@ -39,6 +40,7 @@ struct RiskDetailCurrentDTO: Decodable {
     let reason: String?
 
     enum CodingKeys: String, CodingKey {
+
         case riskKey = "risk_key"
         case branchID = "branch_id"
         case branch
@@ -74,6 +76,7 @@ struct RiskDetailHistoryPointDTO: Decodable, Identifiable {
     let coverageDays: Double?
 
     enum CodingKeys: String, CodingKey {
+
         case executionID = "execution_id"
         case createdAt = "created_at"
         case priority
@@ -83,6 +86,94 @@ struct RiskDetailHistoryPointDTO: Decodable, Identifiable {
         case residualNeed = "residual_need"
         case averageVelocity = "average_velocity"
         case coverageDays = "coverage_days"
+    }
+}
+
+struct RiskDetailRecommendationDTO: Decodable {
+
+    let title: String
+    let reason: String
+    let confidence: String
+
+    let suggestedOrigin: String
+    let suggestedDestination: String
+    let suggestedQuantity: Int
+
+    let canAddToF8: Bool
+    let alreadyAdded: Bool
+
+    let actionMessage: String?
+    let draftID: Int?
+
+    enum CodingKeys: String, CodingKey {
+
+        case title
+        case reason
+        case confidence
+        case suggestedOrigin = "suggested_origin"
+        case suggestedDestination = "suggested_destination"
+        case suggestedQuantity = "suggested_quantity"
+        case canAddToF8 = "can_add_to_f8"
+        case alreadyAdded = "already_added"
+        case actionMessage = "action_message"
+        case draftID = "draft_id"
+    }
+
+    init(from decoder: Decoder) throws {
+
+        let container = try decoder.container(
+            keyedBy: CodingKeys.self
+        )
+
+        title = try container.decode(
+            String.self,
+            forKey: .title
+        )
+
+        reason = try container.decode(
+            String.self,
+            forKey: .reason
+        )
+
+        confidence = try container.decode(
+            String.self,
+            forKey: .confidence
+        )
+
+        suggestedOrigin = try container.decode(
+            String.self,
+            forKey: .suggestedOrigin
+        )
+
+        suggestedDestination = try container.decode(
+            String.self,
+            forKey: .suggestedDestination
+        )
+
+        suggestedQuantity = try container.decode(
+            Int.self,
+            forKey: .suggestedQuantity
+        )
+
+        canAddToF8 = try container.decode(
+            Bool.self,
+            forKey: .canAddToF8
+        )
+
+        alreadyAdded = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .alreadyAdded
+        ) ?? false
+
+        actionMessage = try container.decodeIfPresent(
+            String.self,
+            forKey: .actionMessage
+        )
+
+        draftID = try container.decodeIfPresent(
+            Int.self,
+            forKey: .draftID
+        )
     }
 }
 
@@ -107,107 +198,25 @@ struct RiskDetailComparisonDTO: Decodable {
     let impact: String
 
     enum CodingKeys: String, CodingKey {
+
         case currentExecutionID = "current_execution_id"
         case previousExecutionID = "previous_execution_id"
+
         case currentPriority = "current_priority"
         case previousPriority = "previous_priority"
+
         case currentNeeded = "current_needed"
         case previousNeeded = "previous_needed"
+
         case currentStock = "current_stock"
         case previousStock = "previous_stock"
+
         case currentResidualNeed = "current_residual_need"
         case previousResidualNeed = "previous_residual_need"
+
         case trend
         case impact
     }
-}
-
-import Foundation
-
-struct RiskDetailAPIResponseDTO: Decodable {
-
-    let status: String
-    let data: RiskDetailDTO
-}
-
-struct RiskDetailDTO: Decodable, Identifiable {
-
-    let id: String
-    let branch: String
-    let productCode: String
-    let size: String
-    let priority: String
-    let stock: Int
-    let sold: Int
-    let needed: Int
-    let residualNeed: Int?
-    let recommendation: RiskDetailRecommendationDTO?
-    let comparison: RiskDetailComparisonDTO?
-    let history: [RiskDetailHistoryDTO]?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case branch
-        case productCode = "product_code"
-        case size
-        case priority
-        case stock
-        case sold
-        case needed
-        case residualNeed = "residual_need"
-        case recommendation
-        case comparison
-        case history
-    }
-}
-
-struct RiskDetailRecommendationDTO: Decodable {
-
-    let title: String
-    let reason: String
-    let confidence: String
-    let suggestedOrigin: String
-    let suggestedDestination: String
-    let suggestedQuantity: Int
-    let canAddToF8: Bool
-    let alreadyAdded: Bool
-    let actionMessage: String?
-    let draftID: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case title
-        case reason
-        case confidence
-        case suggestedOrigin = "suggested_origin"
-        case suggestedDestination = "suggested_destination"
-        case suggestedQuantity = "suggested_quantity"
-        case canAddToF8 = "can_add_to_f8"
-        case alreadyAdded = "already_added"
-        case actionMessage = "action_message"
-        case draftID = "draft_id"
-    }
-}
-
-struct RiskDetailComparisonDTO: Decodable {
-
-    let previousNeeded: Int?
-    let currentNeeded: Int?
-    let variation: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case previousNeeded = "previous_needed"
-        case currentNeeded = "current_needed"
-        case variation
-    }
-}
-
-struct RiskDetailHistoryDTO: Decodable, Identifiable {
-
-    let id: String
-    let label: String
-    let needed: Int?
-    let stock: Int?
-    let priority: String?
 }
 
 struct RiskActionStatusResponseDTO: Decodable {

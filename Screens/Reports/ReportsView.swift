@@ -19,6 +19,7 @@ struct ReportsView: View {
     @StateObject private var automationVM = ReportAutomationViewModel()
     @State private var showReportAutomation = false
 
+
     private var loadingText: String {
 
         if uploadVM.isUploading {
@@ -671,118 +672,118 @@ struct ReportsView: View {
             return AppColors.secondaryText
         }
     }
-}
+    private var f8DraftSection: some View {
 
-private var f8DraftSection: some View {
+        RoundedContainer {
 
-    RoundedContainer {
+            VStack(
+                alignment: .leading,
+                spacing: 16
+            ) {
 
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
+                HStack(alignment: .top, spacing: 12) {
 
-            HStack(alignment: .top, spacing: 12) {
+                    ZStack {
 
-                ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(AppColors.blue.opacity(0.10))
+                            .frame(width: 48, height: 48)
 
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(AppColors.blue.opacity(0.10))
-                        .frame(width: 48, height: 48)
+                        Image(systemName: "tablecells")
+                            .foregroundColor(AppColors.blue)
+                    }
 
-                    Image(systemName: "tablecells")
-                        .foregroundColor(AppColors.blue)
-                }
+                    VStack(
+                        alignment: .leading,
+                        spacing: 4
+                    ) {
 
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
+                        Text("F8 editable")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(AppColors.primaryText)
 
-                    Text("F8 editable")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(AppColors.primaryText)
-
-                    Text(
-                        f8VM.draft == nil
-                        ? "Todavía no hay F8 borrador disponible."
-                        : "Revisá, editá y confirmá el pedido F8."
-                    )
-                    .font(.system(size: 13))
-                    .foregroundColor(AppColors.secondaryText)
-                }
-
-                Spacer()
-
-                if let draft = f8VM.draft {
-
-                    Text(draft.displayStatus)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(
-                            draft.isConfirmed
-                            ? AppColors.green
-                            : AppColors.orange
+                        Text(
+                            f8VM.draft == nil
+                            ? "Todavía no hay F8 borrador disponible."
+                            : "Revisá, editá y confirmá el pedido F8."
                         )
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            (
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.secondaryText)
+                    }
+
+                    Spacer()
+
+                    if let draft = f8VM.draft {
+
+                        Text(draft.displayStatus)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(
                                 draft.isConfirmed
                                 ? AppColors.green
                                 : AppColors.orange
                             )
-                            .opacity(0.12)
-                        )
-                        .cornerRadius(10)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                (
+                                    draft.isConfirmed
+                                    ? AppColors.green
+                                    : AppColors.orange
+                                )
+                                .opacity(0.12)
+                            )
+                            .cornerRadius(10)
+                    }
+                }
+
+                HStack(spacing: 12) {
+
+                    Button {
+
+                        showPicker = true
+
+                    } label: {
+
+                        HStack(spacing: 8) {
+
+                            Image(systemName: "tray.and.arrow.up")
+
+                            Text("Cargar archivo")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(AppColors.background)
+                        .cornerRadius(14)
+                    }
+
+                    Button {
+
+                        showF8Draft = true
+
+                    } label: {
+
+                        HStack(spacing: 8) {
+
+                            Image(systemName: "square.and.pencil")
+
+                            Text("Ver F8")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(AppColors.blue)
+                        .cornerRadius(14)
+                    }
                 }
             }
-
-            HStack(spacing: 12) {
-
-                Button {
-
-                    showPicker = true
-
-                } label: {
-
-                    HStack(spacing: 8) {
-
-                        Image(systemName: "tray.and.arrow.up")
-
-                        Text("Cargar archivo")
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(AppColors.background)
-                    .cornerRadius(14)
-                }
-
-                Button {
-
-                    showF8Draft = true
-
-                } label: {
-
-                    HStack(spacing: 8) {
-
-                        Image(systemName: "square.and.pencil")
-
-                        Text("Ver F8")
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(AppColors.blue)
-                    .cornerRadius(14)
-                }
-            }
+            .padding()
         }
-        .padding()
     }
 }
+
 struct ReportFileItem: Identifiable {
 
     let id = UUID()

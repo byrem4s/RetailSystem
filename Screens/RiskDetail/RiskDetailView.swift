@@ -8,8 +8,7 @@ struct RiskDetailView: View {
 
     @State private var localAlreadyAdded = false
     @State private var localCanAddToF8 = true
-    @State private var localMessage: String?
-    @State private var showLocalMessage = false
+
 
     @SwiftUI.Environment(\.dismiss) private var dismiss
     private var current: RiskDetailCurrentDTO {
@@ -248,107 +247,143 @@ struct RiskDetailView: View {
                     value: "\(recommendation.suggestedQuantity) u."
                 )
 
-                if let message = recommendation.actionMessage,
-                !message.isEmpty {
+                if recommendation.canAddToF8, 
+                    let message = recommendation.actionMessage,
+                    !message.isEmpty {
 
-                    HStack(alignment: .top, spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
 
-                        Image(
-                            systemName: recommendation.canAddToF8
-                            ? "checkmark.circle.fill"
-                            : "exclamationmark.triangle.fill"
+                            Image(
+                                systemName: recommendation.canAddToF8
+                                ? "checkmark.circle.fill"
+                                : "exclamationmark.triangle.fill"
+                            )
+                            .foregroundColor(
+                                recommendation.canAddToF8
+                                ? AppColors.green
+                                : AppColors.orange
+                            )
+
+                            Text(message)
+                                .font(.system(size: 13))
+                                .foregroundColor(AppColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(12)
+                        .background(
+                            (
+                                recommendation.canAddToF8
+                                ? AppColors.green
+                                : AppColors.orange
+                            )
+                            .opacity(0.10)
                         )
-                        .foregroundColor(
-                            recommendation.canAddToF8
-                            ? AppColors.green
-                            : AppColors.orange
-                        )
+                        .cornerRadius(14)
+                }
+            }
 
-                        Text(message)
+            Group {
+
+                if recommendation.alreadyAdded || localAlreadyAdded {
+
+                    HStack(spacing: 10) {
+
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(AppColors.green)
+
+                        Text("Este producto ya fue agregado al F8.")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.primaryText)
+
+                        Spacer()
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.green.opacity(0.10))
+                    .cornerRadius(16)
+
+                } else if canAddToF8 {
+
+                    Button {
+
+                        guard recommendation.canAddToF8,
+                            !recommendation.alreadyAdded,
+                            !localAlreadyAdded,
+                            !AppState.shared.isHistoricalMode else {
+                            return
+                        }
+
+                        onAddToF8()
+
+                    } label: {
+
+                        HStack(spacing: 8) {
+
+                            if isAddingToF8 {
+
+                                ProgressView()
+                                    .tint(.white)
+
+                            } else {
+
+                                Image(systemName: "plus.circle.fill")
+                            }
+
+                            Text(
+                                isAddingToF8
+                                ? "Agregando..."
+                                : "Agregar al F8"
+                            )
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(AppColors.blue)
+                        .cornerRadius(16)
+                    }
+                    .disabled(isAddingToF8)
+
+                } else {
+
+                    HStack(alignment: .top, spacing: 10) {
+
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(AppColors.orange)
+
+                        VStack(
+                            alignment: .leading,
+                            spacing: 5
+                        ) {
+
+                            Text("Revisión manual requerida")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(AppColors.primaryText)
+
+                            Text(
+                                recommendation.actionMessage
+                                ?? recommendation.reason
+                            )
                             .font(.system(size: 13))
                             .foregroundColor(AppColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .fixedSize(
+                                horizontal: false,
+                                vertical: true
+                            )
+                        }
+
+                        Spacer()
                     }
-                    .padding(12)
-                    .background(
-                        (
-                            recommendation.canAddToF8
-                            ? AppColors.green
-                            : AppColors.orange
-                        )
-                        .opacity(0.10)
-                    )
-                    .cornerRadius(14)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppColors.orange.opacity(0.10))
+                    .cornerRadius(16)
                 }
-            }
-
-            Button {
-
-                if recommendation?.alreadyAdded == true || localAlreadyAdded {
-
-                    localMessage = "Este producto ya fue agregado al F8."
-                    showLocalMessage = true
-                    return
-                }
-
-                if !canAddToF8 {
-
-                    localMessage = recommendation?.actionMessage ?? "Esta recomendación no se puede agregar al F8."
-                    showLocalMessage = true
-                    return
-                }
-
-                onAddToF8()
-
-                localAlreadyAdded = true
-                localCanAddToF8 = false
-                localMessage = "Recomendación agregada al F8 correctamente."
-                showLocalMessage = true
-
-            } label: {
-
-                HStack(spacing: 8) {
-
-                    if isAddingToF8 {
-
-                        ProgressView()
-                            .tint(.white)
-
-                    } else {
-
-                        Image(
-                            systemName: localAlreadyAdded || recommendation?.alreadyAdded == true
-                            ? "checkmark.circle.fill"
-                            : "plus.circle.fill"
-                        )
-                    }
-
-                    Text(addButtonTitle)
-                }
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(
-                    canAddToF8
-                    ? AppColors.blue
-                    : Color.gray.opacity(0.55)
-                )
-                .cornerRadius(16)
-            }
-            .disabled(isAddingToF8)
-            .alert(
-                "F8",
-                isPresented: $showLocalMessage
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(localMessage ?? "")
             }
             .onAppear {
 
-                localAlreadyAdded = recommendation?.alreadyAdded == true
-                localCanAddToF8 = recommendation?.canAddToF8 == true
+                localAlreadyAdded = recommendation.alreadyAdded
+                localCanAddToF8 = recommendation.canAddToF8
             }
         }
         .padding(18)
@@ -763,20 +798,4 @@ struct RiskDetailView: View {
         return localCanAddToF8 && recommendation.canAddToF8 && !recommendation.alreadyAdded
     }
 
-    private var addButtonTitle: String {
-
-        if isAddingToF8 {
-            return "Agregando..."
-        }
-
-        if localAlreadyAdded || recommendation?.alreadyAdded == true {
-            return "Agregado al F8"
-        }
-
-        if recommendation?.canAddToF8 == false {
-            return "Sin origen disponible"
-        }
-
-        return "Agregar al F8"
-    }
 }

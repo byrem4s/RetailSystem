@@ -1,26 +1,41 @@
 import SwiftUI
+import UIKit
 
 struct AppColors {
 
+    // MARK: - Adaptive surfaces
+
     static let background = Color(
-        red: 0.95,
-        green: 0.96,
-        blue: 0.97
+        uiColor: .systemGroupedBackground
     )
 
-    static let card = Color.white
+    static let card = Color(
+        uiColor: .secondarySystemGroupedBackground
+    )
+
+    static let elevated = Color(
+        uiColor: .tertiarySystemGroupedBackground
+    )
+
+    static let field = Color(
+        uiColor: .secondarySystemBackground
+    )
+
+    // MARK: - Adaptive text
 
     static let primaryText = Color(
-        red: 0.10,
-        green: 0.10,
-        blue: 0.12
+        uiColor: .label
     )
 
     static let secondaryText = Color(
-        red: 0.55,
-        green: 0.57,
-        blue: 0.62
+        uiColor: .secondaryLabel
     )
+
+    static let tertiaryText = Color(
+        uiColor: .tertiaryLabel
+    )
+
+    // MARK: - Brand and status
 
     static let blue = Color(
         red: 0.24,
@@ -46,15 +61,62 @@ struct AppColors {
         blue: 0.35
     )
 
-    static let shadow = Color.black.opacity(0.025)
+    // MARK: - Structure
+
+    static let shadow = Color.black.opacity(0.10)
 
     static let border = Color(
-        uiColor: UIColor(
-            red: 230 / 255,
-            green: 232 / 255,
-            blue: 236 / 255,
-            alpha: 1
-        )
+        uiColor: .separator
     )
 
+    static let subtleBorder = Color(
+        uiColor: .opaqueSeparator
+    ).opacity(0.45)
+
+    static let selection = blue.opacity(0.12)
+}
+
+
+enum AppTheme: String, CaseIterable, Identifiable {
+
+    case system
+    case light
+    case dark
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .system:
+            return "Sistema"
+        case .light:
+            return "Claro"
+        case .dark:
+            return "Oscuro"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .system:
+            return "circle.lefthalf.filled"
+        case .light:
+            return "sun.max.fill"
+        case .dark:
+            return "moon.stars.fill"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
 }

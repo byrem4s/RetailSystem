@@ -33,7 +33,7 @@ struct AnalysisDateSelectorSheet: View {
                     )
                     .datePickerStyle(.graphical)
                     .padding()
-                    .background(Color.white)
+                    .background(AppColors.card)
                     .cornerRadius(24)
 
                     Button {
@@ -127,7 +127,7 @@ struct AnalysisDateSelectorSheet: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 
@@ -223,7 +223,7 @@ struct AnalysisDateSelectorSheet: View {
                 }
             }
             .padding(16)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(22)
         }
         .buttonStyle(.plain)

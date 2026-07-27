@@ -1,9 +1,14 @@
 import SwiftUI
+import Combine
 
 struct ActivityView: View {
 
     @StateObject private var vm = ActivityViewModel()
+    @ObservedObject private var appState = AppState.shared
+
     @State private var selectedFilter = "Todas"
+
+    private let historyAnchorID = "activity-history"
 
     private let filters = [
         "Todas",
@@ -36,57 +41,85 @@ struct ActivityView: View {
 
     var body: some View {
 
-        ZStack {
+        ScrollViewReader { proxy in
 
-            ScrollView(showsIndicators: false) {
+            ZStack {
 
-                VStack(
-                    alignment: .leading,
-                    spacing: 22
-                ) {
+                ScrollView(showsIndicators: false) {
 
-                    headerSection
+                    VStack(
+                        alignment: .leading,
+                        spacing: 22
+                    ) {
 
-                    filtersSection
+                        headerSection
 
-                    summarySection
+                        filtersSection
 
-                    activityListSection
+                        summarySection
+
+                        activityListSection
+                            .id(historyAnchorID)
+                    }
+                    .padding(.top, 28)
+                    .padding(18)
+                    .padding(.bottom, 120)
                 }
-                .padding(.top, 28)
-                .padding(18)
-                .padding(.bottom, 120)
+
+                if vm.isLoading {
+
+                    Color.black.opacity(0.20)
+                        .ignoresSafeArea()
+
+                    ProgressView()
+                        .scaleEffect(1.4)
+                }
             }
-
-            if vm.isLoading {
-
-                Color.black.opacity(0.20)
-                    .ignoresSafeArea()
-
-                ProgressView()
-                    .scaleEffect(1.4)
+            .background(AppColors.background)
+            .alert(
+                "Error",
+                isPresented: Binding(
+                    get: { vm.errorMessage != nil },
+                    set: { _ in vm.errorMessage = nil }
+                )
+            ) {
+                Button("OK") {}
+            } message: {
+                Text(vm.errorMessage ?? "")
             }
-        }
-        .background(AppColors.background)
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { _ in vm.errorMessage = nil }
-            )
-        ) {
-            Button("OK") {}
-        } message: {
-            Text(vm.errorMessage ?? "")
-        }
-        .task {
-            await vm.loadData()
-        }
-        .onReceive(AppState.shared.$refreshID) { _ in
-            Task {
+            .task {
                 await vm.loadData()
+                focusHistoryIfNeeded(proxy)
+            }
+            .onReceive(AppState.shared.$refreshID) { _ in
+                Task {
+                    await vm.loadData()
+                }
+            }
+            .onReceive(appState.$activityHistoryRequestID) { _ in
+                focusHistoryIfNeeded(proxy)
             }
         }
+    }
+
+    private func focusHistoryIfNeeded(
+        _ proxy: ScrollViewProxy
+    ) {
+
+        guard appState.shouldFocusActivityHistory else {
+            return
+        }
+
+        selectedFilter = "Todas"
+
+        withAnimation(.easeInOut) {
+            proxy.scrollTo(
+                historyAnchorID,
+                anchor: .top
+            )
+        }
+
+        appState.consumeActivityHistoryFocus()
     }
 
     private var headerSection: some View {
@@ -135,7 +168,7 @@ struct ActivityView: View {
                             Group {
                                 if selectedFilter == filter {
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.white)
+                                        .fill(AppColors.card)
                                 }
                             }
                         )
@@ -223,7 +256,7 @@ struct ActivityView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 
@@ -322,7 +355,7 @@ struct ActivityView: View {
             activityMetadata(item)
         }
         .padding(16)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 

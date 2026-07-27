@@ -93,7 +93,7 @@ struct RiskDetailView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(AppColors.primaryText)
                     .frame(width: 36, height: 36)
-                    .background(Color.white)
+                    .background(AppColors.card)
                     .clipShape(Circle())
             }
         }
@@ -129,27 +129,27 @@ struct RiskDetailView: View {
             ) {
 
                 metricCard(
-                    title: "Vendido",
-                    value: "\(current.sold) u.",
-                    color: AppColors.blue
-                )
-
-                metricCard(
-                    title: "Stock actual",
-                    value: "\(current.stock) u.",
-                    color: priorityColor(current.priority)
-                )
-
-                metricCard(
-                    title: "Necesidad",
+                    title: "Necesitaba",
                     value: "\(current.needed) u.",
-                    color: AppColors.orange
+                    color: AppColors.primaryText
+                )
+
+                metricCard(
+                    title: "Repuesto",
+                    value: "\(current.replenishedQuantity) u.",
+                    color: AppColors.green
                 )
 
                 metricCard(
                     title: "Pendiente",
                     value: "\(current.residualNeed) u.",
                     color: AppColors.red
+                )
+
+                metricCard(
+                    title: "Stock actual",
+                    value: "\(current.stock) u.",
+                    color: priorityColor(current.priority)
                 )
 
                 metricCard(
@@ -166,7 +166,7 @@ struct RiskDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -187,7 +187,7 @@ struct RiskDetailView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -202,7 +202,7 @@ struct RiskDetailView: View {
 
             HStack {
 
-                Text("Recomendación")
+                Text("Acción alternativa")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundColor(AppColors.primaryText)
 
@@ -217,16 +217,28 @@ struct RiskDetailView: View {
                     .cornerRadius(12)
             }
 
-            Text(recommendation.title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(AppColors.primaryText)
+            Text(
+                recommendationMatchesCurrentRisk(recommendation)
+                ? recommendation.title
+                : "Revisión manual requerida"
+            )
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(AppColors.primaryText)
 
-            Text(recommendation.reason)
-                .font(.system(size: 14))
-                .foregroundColor(AppColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                recommendationMatchesCurrentRisk(recommendation)
+                ? recommendation.reason
+                : (current.reason ?? "La recomendación recibida no coincide con el motivo de esta alerta.")
+            )
+            .font(.system(size: 14))
+            .foregroundColor(AppColors.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
 
-            VStack(spacing: 8) {
+            if recommendationMatchesCurrentRisk(recommendation),
+               recommendation.canAddToF8,
+               recommendation.suggestedQuantity > 0 {
+
+                VStack(spacing: 8) {
 
                 recommendationRow(
                     title: "Origen sugerido",
@@ -280,6 +292,8 @@ struct RiskDetailView: View {
                         )
                         .cornerRadius(14)
                 }
+            }
+
             }
 
             Group {
@@ -361,8 +375,9 @@ struct RiskDetailView: View {
                                 .foregroundColor(AppColors.primaryText)
 
                             Text(
-                                recommendation.actionMessage
-                                ?? recommendation.reason
+                                manualActionMessage(
+                                    for: recommendation
+                                )
                             )
                             .font(.system(size: 13))
                             .foregroundColor(AppColors.secondaryText)
@@ -387,7 +402,7 @@ struct RiskDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -432,7 +447,7 @@ struct RiskDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -471,7 +486,7 @@ struct RiskDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -773,7 +788,7 @@ struct RiskDetailView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -795,7 +810,53 @@ struct RiskDetailView: View {
             return false
         }
 
-        return localCanAddToF8 && recommendation.canAddToF8 && !recommendation.alreadyAdded
+        return localCanAddToF8
+        && recommendation.canAddToF8
+        && !recommendation.alreadyAdded
+        && recommendationMatchesCurrentRisk(recommendation)
     }
 
+    private var isOutletRisk: Bool {
+
+        let text = [
+            current.riskType,
+            current.reason ?? ""
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        return text.contains("outlet")
+    }
+
+    private func recommendationMatchesCurrentRisk(
+        _ recommendation: RiskDetailRecommendationDTO
+    ) -> Bool {
+
+        guard isOutletRisk else {
+            return true
+        }
+
+        let recommendationText = [
+            recommendation.title,
+            recommendation.reason,
+            recommendation.suggestedDestination
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        return recommendationText.contains("outlet")
+    }
+
+    private func manualActionMessage(
+        for recommendation: RiskDetailRecommendationDTO
+    ) -> String {
+
+        if !recommendationMatchesCurrentRisk(recommendation) {
+            return current.reason
+            ?? "La recomendación automática no coincide con el motivo de esta alerta."
+        }
+
+        return recommendation.actionMessage
+        ?? recommendation.reason
+    }
 }

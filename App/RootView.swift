@@ -37,6 +37,10 @@ struct RootView: View {
             HomeView(
                 onOpenAlerts: {
                     selectedTab = .alerts
+                },
+                onOpenActivityHistory: {
+                    AppState.shared.requestActivityHistoryFocus()
+                    selectedTab = .activity
                 }
             )
 
@@ -59,5 +63,8 @@ struct RootView_Previews: PreviewProvider {
 
     static var previews: some View {
         RootView()
+            .environmentObject(
+                UserProfileStore()
+            )
     }
-}   
+}

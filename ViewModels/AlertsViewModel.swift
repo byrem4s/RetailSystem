@@ -18,7 +18,9 @@ final class AlertsViewModel: ObservableObject {
     private let riskDetailService = RiskDetailService()
 
     var alerts: [AlertDTO] {
-        response?.alerts ?? []
+        (response?.alerts ?? []).filter {
+            $0.isUnresolved
+        }
     }
 
     var criticalAlerts: [AlertDTO] {
@@ -40,19 +42,19 @@ final class AlertsViewModel: ObservableObject {
     }
 
     var criticalCount: Int {
-        response?.summary.critical ?? 0
+        criticalAlerts.count
     }
 
     var highCount: Int {
-        response?.summary.high ?? 0
+        highAlerts.count
     }
 
     var mediumCount: Int {
-        response?.summary.medium ?? 0
+        mediumAlerts.count
     }
 
     var totalCount: Int {
-        response?.summary.total ?? 0
+        alerts.count
     }
 
     var branchOptions: [String] {
@@ -148,11 +150,17 @@ final class AlertsViewModel: ObservableObject {
         from error: Error
     ) -> String {
 
-        let message = error.localizedDescription.lowercased()
+        let originalMessage = error.localizedDescription
+        let message = originalMessage.lowercased()
 
-        if message.contains("409")
-            || message.contains("conflict")
-            || message.contains("already")
+        if message.contains("origen")
+            || message.contains("stock")
+            || message.contains("disponible") {
+
+            return originalMessage
+        }
+
+        if message.contains("already")
             || message.contains("duplic")
             || message.contains("ya fue")
             || message.contains("ya existe") {
@@ -160,13 +168,6 @@ final class AlertsViewModel: ObservableObject {
             return "Este producto ya fue agregado al F8."
         }
 
-        if message.contains("origen")
-            || message.contains("stock")
-            || message.contains("disponible") {
-
-            return "No hay origen o stock disponible para agregar esta recomendación al F8."
-        }
-
-        return error.localizedDescription
+        return originalMessage
     }
 }

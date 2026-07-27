@@ -132,7 +132,7 @@ struct AlertsView: View {
                     )
                 )
 
-            Text("Riesgos y oportunidades detectadas")
+            Text("Productos con reposición incompleta")
                 .font(.system(size: 14))
                 .foregroundColor(AppColors.secondaryText)
         }
@@ -180,13 +180,13 @@ struct AlertsView: View {
                     alertSummaryCard(
                         title: "Total",
                         value: "\(vm.totalCount)",
-                        color: AppColors.green,
-                        icon: "checkmark.circle.fill"
+                        color: AppColors.blue,
+                        icon: "exclamationmark.circle.fill"
                     )
                 }
             }
             .padding(14)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(26)
         }
     }
@@ -329,7 +329,7 @@ struct AlertsView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(18)
         }
     }
@@ -545,36 +545,27 @@ struct AlertsView: View {
             HStack(spacing: 0) {
 
                 metricBlock(
-                    title: "Vendió",
-                    value: "\(item.sold) u.",
-                    subtitle: "en \(item.soldPeriodDays) días",
-                    color: AppColors.primaryText
-                )
-
-                metricDivider
-
-                metricBlock(
-                    title: "Stock actual",
-                    value: "\(item.stock) u.",
-                    subtitle: nil,
-                    color: color
-                )
-
-                metricDivider
-
-                metricBlock(
-                    title: "Velocidad",
-                    value: "\(formatVelocity(item.averageVelocity)) u/día",
-                    subtitle: nil,
-                    color: AppColors.primaryText
-                )
-
-                metricDivider
-
-                metricBlock(
-                    title: "Necesidad",
+                    title: "Necesitaba",
                     value: "\(item.needed) u.",
                     subtitle: nil,
+                    color: AppColors.primaryText
+                )
+
+                metricDivider
+
+                metricBlock(
+                    title: "Repuesto",
+                    value: "\(item.replenishedQuantity) u.",
+                    subtitle: "incluido en F8",
+                    color: AppColors.green
+                )
+
+                metricDivider
+
+                metricBlock(
+                    title: "Pendiente",
+                    value: "\(item.pendingQuantity) u.",
+                    subtitle: "sin resolver",
                     color: color
                 )
             }
@@ -586,88 +577,47 @@ struct AlertsView: View {
                 .foregroundColor(AppColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 12) {
+            Text("El sistema ya agregó al F8 todo lo que pudo resolver automáticamente.")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AppColors.tertiaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
-                Button {
+            Button {
 
-                    Task {
-                        await vm.openRiskDetail(
-                            riskKey: item.resolvedRiskKey
-                        )
-                    }
-
-                } label: {
-
-                    HStack(spacing: 8) {
-
-                        Image(systemName: "eye")
-
-                        Text("Ver detalle")
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.white)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.gray.opacity(0.18))
+                Task {
+                    await vm.openRiskDetail(
+                        riskKey: item.resolvedRiskKey
                     )
-                    .cornerRadius(14)
                 }
-                .disabled(vm.isRiskDetailLoading || vm.isAddingRiskToF8)
 
-                Button {
+            } label: {
 
-                    if item.resolvedRiskKey.isEmpty {
+                HStack(spacing: 8) {
 
-                        vm.errorMessage = "No se pudo identificar la recomendación."
-                        return
-                    }
+                    Image(systemName: "eye")
 
-                    Task {
-                        await vm.addRiskRecommendationToF8(
-                            riskKey: item.resolvedRiskKey
-                        )
-                    }
+                    Text("Ver detalle y alternativas")
 
-                } label: {
+                    Spacer()
 
-                    HStack(spacing: 8) {
-
-                        if vm.isAddingRiskToF8 {
-
-                            ProgressView()
-                                .tint(.white)
-
-                            Text("Agregando...")
-
-                        } else {
-
-                            Text("Tomar acción")
-
-                            Image(systemName: "chevron.right")
-                        }
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        vm.isAddingRiskToF8 || AppState.shared.isHistoricalMode
-                        ? Color.gray.opacity(0.55)
-                        : color
-                    )
-                    .cornerRadius(14)
+                    Image(systemName: "chevron.right")
                 }
-                .disabled(
-                    vm.isAddingRiskToF8
-                    || AppState.shared.isHistoricalMode
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(AppColors.primaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 13)
+                .background(AppColors.elevated)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(AppColors.border.opacity(0.35))
                 )
+                .cornerRadius(14)
             }
+            .disabled(vm.isRiskDetailLoading)
         }
         .padding(16)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
         .overlay(
             RoundedRectangle(cornerRadius: 24)

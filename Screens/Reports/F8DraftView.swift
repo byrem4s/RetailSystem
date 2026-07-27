@@ -7,6 +7,7 @@ struct F8DraftView: View {
     @SwiftUI.Environment(\.dismiss) private var dismiss
 
     @State private var exportItem: ReportFileItem?
+    @State private var shareItem: ReportFileItem?
 
     var body: some View {
 
@@ -144,6 +145,16 @@ struct F8DraftView: View {
                     url: item.url
                 )
             }
+            .sheet(
+                item: $shareItem
+            ) { item in
+
+                ShareSheet(
+                    items: [
+                        item.url
+                    ]
+                )
+            }
         }
     }
 
@@ -221,7 +232,7 @@ struct F8DraftView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 
@@ -277,6 +288,33 @@ struct F8DraftView: View {
                     )
                     .opacity(0.10)
                 )
+                .cornerRadius(16)
+
+            } else if vm.draft != nil {
+
+                HStack(alignment: .top, spacing: 12) {
+
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(AppColors.orange)
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 4
+                    ) {
+
+                        Text("Validación no disponible")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(AppColors.primaryText)
+
+                        Text("El F8 no puede confirmarse hasta validar nuevamente todas las filas.")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.secondaryText)
+                    }
+
+                    Spacer()
+                }
+                .padding(14)
+                .background(AppColors.orange.opacity(0.10))
                 .cornerRadius(16)
             }
         }
@@ -438,7 +476,7 @@ struct F8DraftView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(20)
     }
 
@@ -450,33 +488,69 @@ struct F8DraftView: View {
 
             if draft.isConfirmed {
 
-                Button {
+                HStack(spacing: 12) {
 
-                    Task {
+                    Button {
 
-                        if let url = await vm.downloadConfirmedFile() {
+                        Task {
 
-                            exportItem = ReportFileItem(
-                                url: url
-                            )
+                            if let url = await vm.downloadConfirmedFile() {
+
+                                exportItem = ReportFileItem(
+                                    url: url
+                                )
+                            }
                         }
+
+                    } label: {
+
+                        HStack(spacing: 8) {
+
+                            Image(systemName: "square.and.arrow.down")
+
+                            Text("Descargar")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.green)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(AppColors.green.opacity(0.12))
+                        .cornerRadius(16)
                     }
 
-                } label: {
+                    Button {
 
-                    HStack(spacing: 8) {
+                        Task {
 
-                        Image(systemName: "square.and.arrow.down")
+                            if let url = await vm.downloadConfirmedFile() {
 
-                        Text("Descargar F8 confirmado")
+                                shareItem = ReportFileItem(
+                                    url: url
+                                )
+                            }
+                        }
+
+                    } label: {
+
+                        HStack(spacing: 8) {
+
+                            Image(systemName: "square.and.arrow.up")
+
+                            Text("Enviar F8")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(AppColors.blue)
+                        .cornerRadius(16)
                     }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(AppColors.green)
-                    .cornerRadius(16)
                 }
+
+                Text("Podés compartirlo por WhatsApp, Drive, correo, AirDrop o guardarlo en Archivos.")
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
 
             } else {
 
@@ -839,7 +913,7 @@ struct F8DraftEditRowSheet: View {
                 }
             }
             .padding(16)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(16)
 
             Text("Máximo disponible: \(maxQuantity)")
@@ -864,7 +938,7 @@ struct F8DraftEditRowSheet: View {
                 .foregroundColor(AppColors.secondaryText)
         }
         .padding(16)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(16)
     }
 

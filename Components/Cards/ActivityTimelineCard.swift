@@ -127,7 +127,7 @@ struct ActivityTimelineCard: View {
                 }
                 .padding(18)
             }
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(26)
         }
     }

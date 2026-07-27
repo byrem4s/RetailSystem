@@ -123,7 +123,7 @@ struct ReportAutomationSheet: View {
                 .foregroundColor(AppColors.secondaryText)
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -204,7 +204,7 @@ struct ReportAutomationSheet: View {
             .font(.system(size: 14, weight: .semibold))
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -339,7 +339,7 @@ struct ReportAutomationSheet: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(18)
     }
 }

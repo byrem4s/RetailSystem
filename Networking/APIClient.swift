@@ -47,7 +47,10 @@ final class APIClient {
 
             guard 200...299 ~= httpResponse.statusCode else {
 
-                throw NetworkError.serverError
+                throw serverError(
+                    from: data,
+                    statusCode: httpResponse.statusCode
+                )
             }
 
             do {
@@ -115,7 +118,10 @@ final class APIClient {
             }
 
             guard 200...299 ~= httpResponse.statusCode else {
-                throw NetworkError.serverError
+                throw serverError(
+                    from: data,
+                    statusCode: httpResponse.statusCode
+                )
             }
 
             do {
@@ -185,7 +191,10 @@ final class APIClient {
             }
 
             guard 200...299 ~= httpResponse.statusCode else {
-                throw NetworkError.serverError
+                throw serverError(
+                    from: data,
+                    statusCode: httpResponse.statusCode
+                )
             }
 
             do {
@@ -248,7 +257,10 @@ final class APIClient {
             }
 
             guard 200...299 ~= httpResponse.statusCode else {
-                throw NetworkError.serverError
+                throw serverError(
+                    from: data,
+                    statusCode: httpResponse.statusCode
+                )
             }
 
             do {
@@ -273,4 +285,42 @@ final class APIClient {
             throw error
         }
     }
+
+
+    private func serverError(
+        from data: Data,
+        statusCode: Int
+    ) -> NetworkError {
+
+        if let errorResponse = try? JSONDecoder().decode(
+            APIErrorResponseDTO.self,
+            from: data
+        ) {
+
+            let message = errorResponse.detail
+            ?? errorResponse.message
+
+            if let message,
+               !message.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+               ).isEmpty {
+
+                return .serverMessage(message)
+            }
+        }
+
+        if statusCode == 409 {
+            return .serverMessage(
+                "La operación no pudo completarse porque los datos cambiaron o la acción ya no es válida."
+            )
+        }
+
+        return .serverError
+    }
+}
+
+private struct APIErrorResponseDTO: Decodable {
+
+    let detail: String?
+    let message: String?
 }

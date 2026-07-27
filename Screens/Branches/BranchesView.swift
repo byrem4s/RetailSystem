@@ -263,7 +263,7 @@ struct BranchesView: View {
                 ZStack {
 
                     Circle()
-                        .fill(Color.white)
+                        .fill(AppColors.card)
                         .frame(width: 44, height: 44)
 
                     Image(systemName: "line.3.horizontal.decrease")
@@ -305,7 +305,7 @@ struct BranchesView: View {
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 13)
-    .background(Color.white)
+    .background(AppColors.card)
     .cornerRadius(18)
 }
 
@@ -323,7 +323,7 @@ struct BranchesView: View {
             ZStack {
 
                 Circle()
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .frame(width: 44, height: 44)
 
                 Image(systemName: icon)
@@ -376,7 +376,7 @@ struct BranchesView: View {
             )
         }
         .padding(14)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -470,7 +470,7 @@ struct BranchesView: View {
                             Group {
                                 if selectedFilter == filter {
                                     RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.white)
+                                        .fill(AppColors.card)
                                 }
                             }
                         )
@@ -543,7 +543,7 @@ struct BranchesView: View {
                         .foregroundColor(AppColors.blue)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
-                        .background(Color.white)
+                        .background(AppColors.card)
                         .cornerRadius(16)
                     }
                 }
@@ -628,7 +628,7 @@ struct BranchesView: View {
                 }
             }
             .padding(14)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(20)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
@@ -718,7 +718,7 @@ struct BranchesView: View {
             if vm.isDetailLoading {
 
                 RoundedRectangle(cornerRadius: 28)
-                    .fill(Color.white)
+                    .fill(AppColors.card)
                     .frame(height: 180)
                     .overlay(
                         ProgressView()
@@ -830,7 +830,7 @@ struct BranchesView: View {
             )
         }
         .padding(20)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(28)
     }
 
@@ -1170,7 +1170,7 @@ struct BranchFullDetailSheet: View {
                 .foregroundColor(healthColor(branch.health))
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -1214,7 +1214,7 @@ struct BranchFullDetailSheet: View {
             )
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -1312,7 +1312,7 @@ struct BranchFullDetailSheet: View {
                                     .foregroundColor(AppColors.secondaryText)
                             }
                             .padding(12)
-                            .background(Color.white)
+                            .background(AppColors.card)
                             .cornerRadius(18)
                         }
                         .buttonStyle(.plain)

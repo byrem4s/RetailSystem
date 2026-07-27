@@ -126,7 +126,7 @@ struct NotificationsSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(18)
     }
 
@@ -239,7 +239,7 @@ struct NotificationsSheet: View {
                 }
             }
             .padding(16)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(22)
         }
         .buttonStyle(.plain)

@@ -39,6 +39,10 @@ struct RiskDetailCurrentDTO: Decodable {
 
     let reason: String?
 
+    var replenishedQuantity: Int {
+        max(needed - residualNeed, 0)
+    }
+
     enum CodingKeys: String, CodingKey {
 
         case riskKey = "risk_key"

@@ -14,7 +14,7 @@ struct RoundedContainer<Content: View>: View {
     var body: some View {
 
         content
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(22)
     }
 }

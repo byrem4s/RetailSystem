@@ -38,7 +38,7 @@ final class F8DraftViewModel: ObservableObject {
             return false
         }
 
-        return validation?.canConfirm ?? true
+        return validation?.canConfirm ?? false
     }
 
     var statusText: String {

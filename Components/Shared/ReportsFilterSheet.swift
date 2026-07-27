@@ -74,7 +74,7 @@ struct ReportsFilterSheet: View {
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
             .padding(14)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(16)
         }
     }
@@ -136,7 +136,7 @@ struct ReportsFilterSheet: View {
             .pickerStyle(.menu)
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
+            .background(AppColors.card)
             .cornerRadius(16)
         }
     }
@@ -164,7 +164,7 @@ struct ReportsFilterSheet: View {
                 )
                 .datePickerStyle(.graphical)
                 .padding()
-                .background(Color.white)
+                .background(AppColors.card)
                 .cornerRadius(24)
             }
         }

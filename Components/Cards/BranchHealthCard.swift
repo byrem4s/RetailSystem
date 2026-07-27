@@ -61,7 +61,7 @@ struct BranchHealthCard: View {
             maxHeight: 160,
             alignment: .topLeading
         )
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 }

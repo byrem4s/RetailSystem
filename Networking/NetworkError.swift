@@ -8,6 +8,8 @@ enum NetworkError: LocalizedError {
 
     case serverError
 
+    case serverMessage(String)
+
     case decodingError
 
     case timeout
@@ -24,6 +26,9 @@ enum NetworkError: LocalizedError {
 
         case .serverError:
             return "Error del servidor"
+
+        case .serverMessage(let message):
+            return message
 
         case .decodingError:
             return "Error procesando datos"

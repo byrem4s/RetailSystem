@@ -95,7 +95,7 @@ struct BranchRankingRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(Color.white)
+        .background(AppColors.card)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
                 .stroke(

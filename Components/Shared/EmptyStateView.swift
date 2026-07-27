@@ -24,7 +24,7 @@ struct EmptyStateView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 }

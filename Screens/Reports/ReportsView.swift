@@ -19,28 +19,6 @@ struct ReportsView: View {
     @StateObject private var automationVM = ReportAutomationViewModel()
     @State private var showReportAutomation = false
 
-
-    private var loadingText: String {
-
-        if uploadVM.isUploading {
-            return "Subiendo archivo..."
-        }
-
-        if uploadVM.isRunningPipeline {
-            return "Ejecutando análisis..."
-        }
-
-        if reportsVM.isFileLoading {
-            return "Preparando archivo..."  
-        }
-
-        if reportsVM.isLoading {
-            return "Cargando reportes..."
-        }
-
-        return "Procesando..."
-    }
-
     var body: some View {
 
         ZStack {
@@ -72,7 +50,8 @@ struct ReportsView: View {
             if uploadVM.isUploading
                 || uploadVM.isRunningPipeline
                 || reportsVM.isLoading
-                || reportsVM.isFileLoading {
+                || reportsVM.isFileLoading
+                || f8VM.isDownloading {
 
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
@@ -132,6 +111,12 @@ struct ReportsView: View {
                 }
             }
         }
+        .sheet(isPresented: $showF8Draft) {
+
+            F8DraftView(
+                vm: f8VM
+            )
+        }
         .sheet(item: $previewItem) { item in
 
             QuickLookPreview(
@@ -185,14 +170,6 @@ struct ReportsView: View {
                 }
             )
         }
-        .sheet(
-            isPresented: $showF8Draft
-        ) {
-
-            F8DraftView(
-                vm: f8VM
-            )
-        }
     }
 
     private var headerSection: some View {
@@ -235,18 +212,6 @@ struct ReportsView: View {
             Spacer()
 
             HStack(spacing: 6) {
-
-                Button {
-
-                    showPicker = true
-
-                } label: {
-
-                    Image(systemName: "tray.and.arrow.up")
-                        .font(.system(size: 23, weight: .semibold))
-                        .foregroundColor(AppColors.primaryText)
-                        .frame(width: 44, height: 44)
-                }
 
                 Button {
 
@@ -341,7 +306,7 @@ struct ReportsView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 46)
-                                .background(AppColors.primaryText)
+                                .background(AppColors.blue)
                                 .cornerRadius(16)
                             }
                         }
@@ -349,6 +314,231 @@ struct ReportsView: View {
                     .padding()
                 }
             }
+        }
+    }
+
+    private var f8DraftSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            HStack {
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 4
+                ) {
+
+                    Text("F8 editable")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(AppColors.primaryText)
+
+                    Text("Revisá, editá y confirmá el pedido antes de exportarlo.")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.secondaryText)
+                }
+
+                Spacer()
+
+                Button {
+
+                    Task {
+                        await f8VM.loadLatestDraft()
+                    }
+
+                } label: {
+
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppColors.primaryText)
+                        .frame(width: 40, height: 40)
+                        .background(AppColors.card)
+                        .clipShape(Circle())
+                }
+                .disabled(f8VM.isLoading)
+            }
+
+            RoundedContainer {
+
+                VStack(
+                    alignment: .leading,
+                    spacing: 16
+                ) {
+
+                    if f8VM.isLoading {
+
+                        HStack(spacing: 12) {
+
+                            ProgressView()
+
+                            Text("Cargando F8...")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(AppColors.secondaryText)
+
+                            Spacer()
+                        }
+
+                    } else if let draft = f8VM.draft {
+
+                        HStack {
+
+                            VStack(
+                                alignment: .leading,
+                                spacing: 4
+                            ) {
+
+                                Text("Pedido F8 · Ejecución #\(draft.executionID)")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(AppColors.primaryText)
+
+                                Text("\(draft.rows.count) filas · \(f8Units(draft)) unidades")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(AppColors.secondaryText)
+                            }
+
+                            Spacer()
+
+                            Text(draft.displayStatus)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(
+                                    draft.isConfirmed
+                                    ? AppColors.green
+                                    : AppColors.orange
+                                )
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background(
+                                    (
+                                        draft.isConfirmed
+                                        ? AppColors.green
+                                        : AppColors.orange
+                                    )
+                                    .opacity(0.12)
+                                )
+                                .cornerRadius(12)
+                        }
+
+                    } else {
+
+                        HStack(alignment: .top, spacing: 12) {
+
+                            Image(systemName: "doc.badge.clock")
+                                .font(.system(size: 22))
+                                .foregroundColor(AppColors.orange)
+
+                            VStack(
+                                alignment: .leading,
+                                spacing: 4
+                            ) {
+
+                                Text("Sin F8 borrador")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(AppColors.primaryText)
+
+                                Text("Cargá los archivos y ejecutá el análisis para generar un F8 editable.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(AppColors.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+
+                        Button {
+
+                            showPicker = true
+
+                        } label: {
+
+                            HStack(spacing: 8) {
+
+                                Image(systemName: "arrow.up.doc.fill")
+
+                                Text("Cargar archivo")
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.primaryText)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(Color.gray.opacity(0.08))
+                            .cornerRadius(15)
+                        }
+                        .disabled(AppState.shared.isHistoricalMode)
+
+                        Button {
+
+                            showF8Draft = true
+
+                        } label: {
+
+                            HStack(spacing: 8) {
+
+                                Image(systemName: "square.and.pencil")
+
+                                Text("Ver F8")
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(
+                                canOpenF8
+                                ? AppColors.blue
+                                : Color.gray.opacity(0.45)
+                            )
+                            .cornerRadius(15)
+                        }
+                        .disabled(!canOpenF8)
+                    }
+
+                    if let draft = f8VM.draft,
+                       draft.isConfirmed {
+
+                        Button {
+
+                            shareConfirmedF8()
+
+                        } label: {
+
+                            HStack(spacing: 8) {
+
+                                Image(systemName: "square.and.arrow.up")
+
+                                Text("Enviar F8 confirmado")
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(AppColors.green)
+                            .cornerRadius(16)
+                        }
+                        .disabled(f8VM.isDownloading)
+                    }
+                }
+                .padding(18)
+            }
+        }
+    }
+
+    private var canOpenF8: Bool {
+
+        f8VM.draft != nil
+        && !f8VM.isLoading
+        && !AppState.shared.isHistoricalMode
+    }
+
+    private func f8Units(
+        _ draft: F8DraftDTO
+    ) -> Int {
+
+        draft.rows.reduce(0) { partialResult, row in
+            partialResult + row.quantity
         }
     }
 
@@ -413,10 +603,12 @@ struct ReportsView: View {
                 .padding(.horizontal, 14)
                 .frame(height: 52)
                 .frame(maxWidth: .infinity)
-                .background(Color.white)
+                .background(AppColors.card)
                 .cornerRadius(16)
 
                 Button {
+
+                    showReportsFilters = true
 
                 } label: {
 
@@ -430,7 +622,7 @@ struct ReportsView: View {
                     .foregroundColor(AppColors.primaryText)
                     .padding(.horizontal, 14)
                     .frame(height: 52)
-                    .background(Color.white)
+                    .background(AppColors.card)
                     .cornerRadius(16)
                 }
             }
@@ -562,8 +754,38 @@ struct ReportsView: View {
                 .foregroundColor(AppColors.secondaryText)
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
+    }
+
+    private var loadingText: String {
+
+        if uploadVM.isUploading {
+            return "Subiendo archivo..."
+        }
+
+        if uploadVM.isRunningPipeline {
+            return "Ejecutando análisis..."
+        }
+
+        if reportsVM.isFileLoading || f8VM.isDownloading {
+            return "Preparando archivo..."
+        }
+
+        return "Cargando reportes..."
+    }
+
+    private func shareConfirmedF8() {
+
+        Task {
+
+            if let url = await f8VM.downloadConfirmedFile() {
+
+                shareItem = ReportFileItem(
+                    url: url
+                )
+            }
+        }
     }
 
     private func previewReport(
@@ -670,116 +892,6 @@ struct ReportsView: View {
 
         default:
             return AppColors.secondaryText
-        }
-    }
-    private var f8DraftSection: some View {
-
-        RoundedContainer {
-
-            VStack(
-                alignment: .leading,
-                spacing: 16
-            ) {
-
-                HStack(alignment: .top, spacing: 12) {
-
-                    ZStack {
-
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(AppColors.blue.opacity(0.10))
-                            .frame(width: 48, height: 48)
-
-                        Image(systemName: "tablecells")
-                            .foregroundColor(AppColors.blue)
-                    }
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 4
-                    ) {
-
-                        Text("F8 editable")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(AppColors.primaryText)
-
-                        Text(
-                            f8VM.draft == nil
-                            ? "Todavía no hay F8 borrador disponible."
-                            : "Revisá, editá y confirmá el pedido F8."
-                        )
-                        .font(.system(size: 13))
-                        .foregroundColor(AppColors.secondaryText)
-                    }
-
-                    Spacer()
-
-                    if let draft = f8VM.draft {
-
-                        Text(draft.displayStatus)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(
-                                draft.isConfirmed
-                                ? AppColors.green
-                                : AppColors.orange
-                            )
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                (
-                                    draft.isConfirmed
-                                    ? AppColors.green
-                                    : AppColors.orange
-                                )
-                                .opacity(0.12)
-                            )
-                            .cornerRadius(10)
-                    }
-                }
-
-                HStack(spacing: 12) {
-
-                    Button {
-
-                        showPicker = true
-
-                    } label: {
-
-                        HStack(spacing: 8) {
-
-                            Image(systemName: "tray.and.arrow.up")
-
-                            Text("Cargar archivo")
-                        }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(AppColors.primaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
-                        .background(AppColors.background)
-                        .cornerRadius(14)
-                    }
-
-                    Button {
-
-                        showF8Draft = true
-
-                    } label: {
-
-                        HStack(spacing: 8) {
-
-                            Image(systemName: "square.and.pencil")
-
-                            Text("Ver F8")
-                        }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
-                        .background(AppColors.blue)
-                        .cornerRadius(14)
-                    }
-                }
-            }
-            .padding()
         }
     }
 }

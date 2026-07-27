@@ -1,6 +1,9 @@
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
+
+    @EnvironmentObject private var profileStore: UserProfileStore
 
     @StateObject private var vm = HomeViewModel()
 
@@ -11,13 +14,17 @@ struct HomeView: View {
     @StateObject private var notificationsVM = NotificationViewModel()
     
     @State private var showNotifications = false
+    @State private var showProfile = false
 
     let onOpenAlerts: () -> Void
+    let onOpenActivityHistory: () -> Void
 
     init(
-        onOpenAlerts: @escaping () -> Void = {}
+        onOpenAlerts: @escaping () -> Void = {},
+        onOpenActivityHistory: @escaping () -> Void = {}
     ) {
         self.onOpenAlerts = onOpenAlerts
+        self.onOpenActivityHistory = onOpenActivityHistory
     }
 
     private var primarySummaryKPIs: [KPIModel] {
@@ -227,8 +234,21 @@ struct HomeView: View {
                 vm: notificationsVM
             )
         }
+        .sheet(
+            isPresented: $showProfile
+        ) {
+
+            ProfileView()
+                .environmentObject(profileStore)
+        }
         .task {
             await vm.loadData()
+
+            profileStore.seedIfNeeded(
+                name: vm.userName,
+                branch: vm.userBranch
+            )
+
             await notificationsVM.loadUnreadCount()
         }
         .onReceive(AppState.shared.$refreshID) { _ in
@@ -263,38 +283,60 @@ struct HomeView: View {
 
             Spacer()
 
-            Button {
+            HStack(spacing: 8) {
 
-                showNotifications = true
+                Button {
 
-            } label: {
+                    showProfile = true
 
-                ZStack(alignment: .topTrailing) {
+                } label: {
 
-                    Image(systemName: "bell")
-                        .font(
-                            .system(
-                                size: 24,
-                                weight: .semibold
+                    ZStack {
+
+                        Circle()
+                            .fill(AppColors.blue.opacity(0.14))
+                            .frame(width: 42, height: 42)
+
+                        Text(profileStore.initials)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(AppColors.blue)
+                    }
+                }
+                .accessibilityLabel("Abrir perfil")
+
+                Button {
+
+                    showNotifications = true
+
+                } label: {
+
+                    ZStack(alignment: .topTrailing) {
+
+                        Image(systemName: "bell")
+                            .font(
+                                .system(
+                                    size: 24,
+                                    weight: .semibold
+                                )
                             )
-                        )
-                        .foregroundColor(AppColors.primaryText)
-                        .frame(width: 44, height: 44)
+                            .foregroundColor(AppColors.primaryText)
+                            .frame(width: 44, height: 44)
 
-                    if notificationsVM.unreadCount > 0 {
+                        if notificationsVM.unreadCount > 0 {
 
-                        Text(
-                            notificationsVM.unreadCount > 99
-                            ? "99+"
-                            : "\(notificationsVM.unreadCount)"
-                        )
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(AppColors.red)
-                        .clipShape(Capsule())
-                        .offset(x: 4, y: 2)
+                            Text(
+                                notificationsVM.unreadCount > 99
+                                ? "99+"
+                                : "\(notificationsVM.unreadCount)"
+                            )
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(AppColors.red)
+                            .clipShape(Capsule())
+                            .offset(x: 4, y: 2)
+                        }
                     }
                 }
             }
@@ -312,7 +354,7 @@ struct HomeView: View {
                 spacing: 4
             ) {
 
-                Text("Hola, \(vm.userName)")
+                Text("Hola, \(profileStore.fullName)")
                     .font(
                         .system(
                             size: 22,
@@ -320,7 +362,7 @@ struct HomeView: View {
                         )
                     )
 
-                Text(vm.userBranch)
+                Text(profileStore.displayBranch)
                     .font(.system(size: 14))
                     .foregroundColor(AppColors.secondaryText)
 
@@ -336,13 +378,33 @@ struct HomeView: View {
 
             Spacer()
 
-            Button {
+            HStack(spacing: 6) {
 
-                showAnalysisDateSelector = true
+                Button {
 
-            } label: {
+                    showProfile = true
 
-                Image(systemName: "calendar")
+                } label: {
+
+                    Image(systemName: "person.crop.circle")
+                        .font(
+                            .system(
+                                size: 23,
+                                weight: .semibold
+                            )
+                        )
+                        .foregroundColor(AppColors.blue)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Editar perfil")
+
+                Button {
+
+                    showAnalysisDateSelector = true
+
+                } label: {
+
+                    Image(systemName: "calendar")
                     .font(
                         .system(
                             size: 23,
@@ -355,6 +417,7 @@ struct HomeView: View {
                         : AppColors.primaryText
                     )
                     .frame(width: 44, height: 44)
+                }
             }
         }
     }
@@ -416,7 +479,7 @@ struct HomeView: View {
                     .foregroundColor(AppColors.blue)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.white)
+                    .background(AppColors.card)
                     .cornerRadius(16)
                 }
             }
@@ -471,10 +534,13 @@ struct HomeView: View {
             spacing: 14
         ) {
 
-            SectionHeader(
+            sectionHeader(
                 title: "Actividad reciente",
-                actionTitle: nil
-            )
+                actionTitle: "Ver más"
+            ) {
+
+                onOpenActivityHistory()
+            }
 
             if vm.recentActivity.isEmpty {
 
@@ -488,7 +554,7 @@ struct HomeView: View {
 
                 VStack(spacing: 12) {
 
-                    ForEach(vm.recentActivity.prefix(4)) { item in
+                    ForEach(vm.recentActivity.prefix(5)) { item in
 
                         activityRow(item)
                     }
@@ -583,7 +649,7 @@ struct HomeView: View {
             maxWidth: .infinity,
             alignment: .center
         )
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 
@@ -632,7 +698,7 @@ struct HomeView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .center)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(22)
     }
 
@@ -862,5 +928,419 @@ struct HomeView_Previews: PreviewProvider {
 
     static var previews: some View {
         HomeView()
+            .environmentObject(
+                UserProfileStore()
+            )
+    }
+}
+
+struct ProfileView: View {
+
+    @EnvironmentObject private var profileStore: UserProfileStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var branch = ""
+    @State private var selectedTheme: AppTheme = .light
+    @State private var validationMessage: String?
+
+    var body: some View {
+
+        NavigationView {
+
+            ZStack {
+
+                AppColors.background
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+
+                    VStack(
+                        alignment: .leading,
+                        spacing: 20
+                    ) {
+
+                        identityCard
+
+                        personalInformationSection
+
+                        appearanceSection
+
+                        saveButton
+
+                        Text("Esta información se guarda localmente en esta versión. Cuando se agreguen usuarios, podrá sincronizarse con la cuenta del sistema.")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.tertiaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(18)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Perfil")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+
+                ToolbarItem(
+                    placement: .topBarLeading
+                ) {
+
+                    Button("Cancelar") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                loadDraft()
+            }
+            .alert(
+                "Revisar perfil",
+                isPresented: Binding(
+                    get: {
+                        validationMessage != nil
+                    },
+                    set: { _ in
+                        validationMessage = nil
+                    }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(validationMessage ?? "")
+            }
+        }
+        .preferredColorScheme(
+            selectedTheme.colorScheme
+        )
+    }
+
+    private var identityCard: some View {
+
+        VStack(spacing: 14) {
+
+            ZStack {
+
+                Circle()
+                    .fill(AppColors.blue.opacity(0.14))
+                    .frame(width: 88, height: 88)
+
+                Text(draftInitials)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(AppColors.blue)
+            }
+
+            VStack(spacing: 4) {
+
+                Text(draftFullName)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(AppColors.primaryText)
+
+                Text(
+                    branch.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    ).isEmpty
+                    ? "Sucursal sin definir"
+                    : branch
+                )
+                .font(.system(size: 14))
+                .foregroundColor(AppColors.secondaryText)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 18)
+        .background(AppColors.card)
+        .cornerRadius(26)
+        .overlay(
+            RoundedRectangle(cornerRadius: 26)
+                .stroke(AppColors.border.opacity(0.35))
+        )
+    }
+
+    private var personalInformationSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            sectionTitle(
+                "Información personal",
+                icon: "person.text.rectangle"
+            )
+
+            profileField(
+                title: "Nombre",
+                placeholder: "Nombre",
+                text: $firstName,
+                contentType: .givenName
+            )
+
+            profileField(
+                title: "Apellido",
+                placeholder: "Apellido",
+                text: $lastName,
+                contentType: .familyName
+            )
+
+            profileField(
+                title: "Sucursal",
+                placeholder: "Ej. Calle 12",
+                text: $branch,
+                contentType: .organizationName
+            )
+        }
+        .padding(18)
+        .background(AppColors.card)
+        .cornerRadius(24)
+    }
+
+    private var appearanceSection: some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 14
+        ) {
+
+            sectionTitle(
+                "Apariencia",
+                icon: "paintbrush.fill"
+            )
+
+            Text("Elegí cómo querés ver la aplicación.")
+                .font(.system(size: 13))
+                .foregroundColor(AppColors.secondaryText)
+
+            HStack(spacing: 10) {
+
+                ForEach(AppTheme.allCases) { theme in
+
+                    Button {
+                        selectedTheme = theme
+                    } label: {
+
+                        VStack(spacing: 9) {
+
+                            Image(systemName: theme.icon)
+                                .font(.system(size: 20, weight: .semibold))
+
+                            Text(theme.title)
+                                .font(.system(size: 12, weight: .semibold))
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(
+                            selectedTheme == theme
+                            ? AppColors.blue
+                            : AppColors.secondaryText
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 82)
+                        .background(
+                            selectedTheme == theme
+                            ? AppColors.blue.opacity(0.12)
+                            : AppColors.elevated
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18)
+                                .stroke(
+                                    selectedTheme == theme
+                                    ? AppColors.blue
+                                    : AppColors.border.opacity(0.35),
+                                    lineWidth: selectedTheme == theme ? 1.5 : 1
+                                )
+                        )
+                        .cornerRadius(18)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            themePreview
+        }
+        .padding(18)
+        .background(AppColors.card)
+        .cornerRadius(24)
+    }
+
+    private var themePreview: some View {
+
+        HStack(spacing: 12) {
+
+            ZStack {
+
+                RoundedRectangle(cornerRadius: 13)
+                    .fill(AppColors.blue.opacity(0.14))
+                    .frame(width: 42, height: 42)
+
+                Image(systemName: "chart.bar.fill")
+                    .foregroundColor(AppColors.blue)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+
+                Text("Vista previa")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(AppColors.primaryText)
+
+                Text("Las tarjetas, textos y fondos se adaptan al tema seleccionado.")
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(AppColors.elevated)
+        .cornerRadius(18)
+    }
+
+    private var saveButton: some View {
+
+        Button {
+            saveProfile()
+        } label: {
+
+            HStack(spacing: 8) {
+
+                Image(systemName: "checkmark.circle.fill")
+
+                Text("Guardar cambios")
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(AppColors.blue)
+            .cornerRadius(18)
+        }
+    }
+
+    private func sectionTitle(
+        _ title: String,
+        icon: String
+    ) -> some View {
+
+        HStack(spacing: 9) {
+
+            Image(systemName: icon)
+                .foregroundColor(AppColors.blue)
+
+            Text(title)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(AppColors.primaryText)
+        }
+    }
+
+    private func profileField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        contentType: UITextContentType
+    ) -> some View {
+
+        VStack(
+            alignment: .leading,
+            spacing: 7
+        ) {
+
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(AppColors.secondaryText)
+
+            TextField(
+                placeholder,
+                text: text
+            )
+            .textContentType(contentType)
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .font(.system(size: 15, weight: .medium))
+            .foregroundColor(AppColors.primaryText)
+            .padding(.horizontal, 14)
+            .frame(height: 48)
+            .background(AppColors.field)
+            .overlay(
+                RoundedRectangle(cornerRadius: 15)
+                    .stroke(AppColors.border.opacity(0.40))
+            )
+            .cornerRadius(15)
+        }
+    }
+
+    private var draftFullName: String {
+
+        let values = [firstName, lastName]
+            .map {
+                $0.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+            }
+            .filter {
+                !$0.isEmpty
+            }
+
+        return values.isEmpty
+        ? "Nuevo usuario"
+        : values.joined(separator: " ")
+    }
+
+    private var draftInitials: String {
+
+        let first = firstName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .first
+            .map(String.init)
+
+        let last = lastName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .first
+            .map(String.init)
+
+        let value = [first, last]
+            .compactMap { $0 }
+            .joined()
+            .uppercased()
+
+        return value.isEmpty ? "U" : value
+    }
+
+    private func loadDraft() {
+
+        firstName = profileStore.firstName
+        lastName = profileStore.lastName
+        branch = profileStore.branch
+        selectedTheme = profileStore.theme
+    }
+
+    private func saveProfile() {
+
+        guard !firstName.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty else {
+
+            validationMessage = "Ingresá el nombre del usuario."
+            return
+        }
+
+        profileStore.updateProfile(
+            firstName: firstName,
+            lastName: lastName,
+            branch: branch,
+            theme: selectedTheme
+        )
+
+        dismiss()
+    }
+}
+
+struct ProfileView_Previews: PreviewProvider {
+
+    static var previews: some View {
+        ProfileView()
+            .environmentObject(
+                UserProfileStore()
+            )
     }
 }

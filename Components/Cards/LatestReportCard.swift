@@ -98,7 +98,7 @@ struct LatestReportCard: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(AppColors.card)
         .cornerRadius(24)
     }
 
@@ -200,8 +200,8 @@ func reportActionButton(
         .frame(height: 46)
         .background(
             primary
-            ? AppColors.primaryText
-            : Color.white
+            ? AppColors.blue
+            : AppColors.card
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)

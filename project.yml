@@ -17,10 +17,32 @@ targets:
           - README.md
           - project.yml
           - Config
+          - Resources
           - RetailSystem.xcodeproj
+      - path: Resources/LaunchScreen.storyboard
+        buildPhase: resources
     info:
       path: Config/Info.plist
+      properties:
+        API_BASE_URL: $(API_BASE_URL)
+        CFBundleDisplayName: Reposición Mateu
+        CFBundleShortVersionString: 2.0.0
+        CFBundleVersion: 2
+        LSRequiresIPhoneOS: true
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     settings:
+      base:
+        ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
       configs:
         Debug:
           base:

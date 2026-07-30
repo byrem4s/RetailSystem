@@ -34,9 +34,10 @@ final class ReportsService {
             endpoint: report.downloadURL
         )
 
-        let request = URLRequest(
+        var request = URLRequest(
             url: url
         )
+        APIClient.shared.authorize(&request)
 
         let (
             temporaryURL,

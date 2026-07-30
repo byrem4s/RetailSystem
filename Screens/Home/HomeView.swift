@@ -937,6 +937,7 @@ struct HomeView_Previews: PreviewProvider {
 struct ProfileView: View {
 
     @EnvironmentObject private var profileStore: UserProfileStore
+    @EnvironmentObject private var session: SessionStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var firstName = ""
@@ -969,7 +970,22 @@ struct ProfileView: View {
 
                         saveButton
 
-                        Text("Esta información se guarda localmente en esta versión. Cuando se agreguen usuarios, podrá sincronizarse con la cuenta del sistema.")
+                        Button(role: .destructive) {
+                            Task {
+                                await session.logout()
+                                dismiss()
+                            }
+                        } label: {
+                            Label(
+                                "Cerrar sesión",
+                                systemImage: "rectangle.portrait.and.arrow.right"
+                            )
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                        }
+                        .buttonStyle(.bordered)
+
+                        Text("El nombre, rol y sucursal autorizada provienen de la cuenta del sistema. La apariencia se guarda en este dispositivo.")
                             .font(.system(size: 12))
                             .foregroundColor(AppColors.tertiaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1308,8 +1324,10 @@ struct ProfileView: View {
 
     private func loadDraft() {
 
-        firstName = profileStore.firstName
-        lastName = profileStore.lastName
+        firstName = session.user?.firstName
+            ?? profileStore.firstName
+        lastName = session.user?.lastName
+            ?? profileStore.lastName
         branch = profileStore.branch
         selectedTheme = profileStore.theme
     }
@@ -1341,6 +1359,9 @@ struct ProfileView_Previews: PreviewProvider {
         ProfileView()
             .environmentObject(
                 UserProfileStore()
+            )
+            .environmentObject(
+                SessionStore()
             )
     }
 }

@@ -107,11 +107,14 @@ final class F8DraftService {
             throw NetworkError.invalidURL
         }
 
+        var downloadRequest = URLRequest(url: url)
+        APIClient.shared.authorize(&downloadRequest)
+
         let (
             data,
             response
         ) = try await URLSession.shared.data(
-            from: url
+            for: downloadRequest
         )
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -158,6 +161,7 @@ final class F8DraftService {
         )
 
         request.httpMethod = method
+        APIClient.shared.authorize(&request)
 
         let (
             data,
@@ -198,6 +202,7 @@ final class F8DraftService {
         request.httpBody = try JSONEncoder().encode(
             body
         )
+        APIClient.shared.authorize(&request)
 
         let (
             data,

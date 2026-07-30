@@ -3,7 +3,7 @@ import Foundation
 
 enum Endpoints {
 
-    static let baseURL = "http://10.0.0.87:8080"
+    static let baseURL = Environment.baseURL
 
     static let health = "\(baseURL)/system/health"
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct BottomTabBar: View {
 
     @Binding var selectedTab: AppTab
+    let tabs: [AppTab]
 
     var body: some View {
 
@@ -14,35 +15,13 @@ struct BottomTabBar: View {
 
             HStack(spacing: 0) {
 
-                tabButton(
-                    tab: .home,
-                    icon: "house",
-                    title: "Home"
-                )
-
-                tabButton(
-                    tab: .alerts,
-                    icon: "bell",
-                    title: "Alerts"
-                )
-
-                tabButton(
-                    tab: .activity,
-                    icon: "arrow.left.arrow.right",
-                    title: "Activity"
-                )
-
-                tabButton(
-                    tab: .branches,
-                    icon: "building.2",
-                    title: "Branches"
-                )
-
-                tabButton(
-                    tab: .reports,
-                    icon: "doc.text",
-                    title: "Reports"
-                )
+                ForEach(tabs) { tab in
+                    tabButton(
+                        tab: tab,
+                        icon: tab.icon,
+                        title: tab.title
+                    )
+                }
             }
             .frame(height: 54)
             .padding(.bottom, 7)

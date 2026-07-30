@@ -6,79 +6,23 @@ final class APIClient {
 
     private init() {}
 
-    private let baseURL =
-        Environment.baseURL
-
     private let session: URLSession = {
-
         let config = URLSessionConfiguration.default
-
-        config.timeoutIntervalForRequest = 15
-
-        config.timeoutIntervalForResource = 30
-
-        return URLSession(
-            configuration: config
-        )
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
     }()
 
     func fetch<T: Decodable>(
         endpoint: String,
         responseType: T.Type
     ) async throws -> T {
-
-        guard let url = URL(
-            string: baseURL + endpoint
-        ) else {
-
-            throw NetworkError.invalidURL
-        }
-
-        do {
-
-            let (data, response) = try await session.data(
-                from: url
-            )
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-
-                throw NetworkError.invalidResponse
-            }
-
-            guard 200...299 ~= httpResponse.statusCode else {
-
-                throw serverError(
-                    from: data,
-                    statusCode: httpResponse.statusCode
-                )
-            }
-
-            do {
-
-                let decoded = try JSONDecoder().decode(
-                    T.self,
-                    from: data
-                )
-
-                return decoded
-
-            } catch {
-
-                throw NetworkError.decodingError
-            }
-
-        } catch {
-
-            if let error = error as? URLError {
-
-                if error.code == .timedOut {
-
-                    throw NetworkError.timeout
-                }
-            }
-
-            throw error
-        }
+        try await execute(
+            endpoint: endpoint,
+            method: "GET",
+            body: nil,
+            responseType: responseType
+        )
     }
 
     func post<T: Decodable, Body: Encodable>(
@@ -86,138 +30,36 @@ final class APIClient {
         body: Body,
         responseType: T.Type
     ) async throws -> T {
-
-        guard let url = URL(
-            string: baseURL + endpoint
-        ) else {
-            throw NetworkError.invalidURL
-        }
-
-        var request = URLRequest(
-            url: url
+        try await execute(
+            endpoint: endpoint,
+            method: "POST",
+            body: try JSONEncoder().encode(body),
+            responseType: responseType
         )
-
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/json",
-            forHTTPHeaderField: "Content-Type"
-        )
-
-        request.httpBody = try JSONEncoder().encode(
-            body
-        )
-
-        do {
-
-            let (data, response) = try await session.data(
-                for: request
-            )
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.invalidResponse
-            }
-
-            guard 200...299 ~= httpResponse.statusCode else {
-                throw serverError(
-                    from: data,
-                    statusCode: httpResponse.statusCode
-                )
-            }
-
-            do {
-
-                return try JSONDecoder().decode(
-                    T.self,
-                    from: data
-                )
-
-            } catch {
-                throw NetworkError.decodingError
-            }
-
-        } catch {
-
-            if let error = error as? URLError,
-            error.code == .timedOut {
-                throw NetworkError.timeout
-            }
-
-            throw error
-        }
     }
 
-    func makeURL(
-        endpoint: String
-    ) throws -> URL {
-
-        guard let url = URL(
-            string: baseURL + endpoint
-        ) else {
-            throw NetworkError.invalidURL
-        }
-
-        return url
+    func post<T: Decodable>(
+        endpoint: String,
+        responseType: T.Type
+    ) async throws -> T {
+        try await execute(
+            endpoint: endpoint,
+            method: "POST",
+            body: nil,
+            responseType: responseType
+        )
     }
 
     func put<T: Decodable>(
         endpoint: String,
         responseType: T.Type
     ) async throws -> T {
-
-        guard let url = URL(
-            string: baseURL + endpoint
-        ) else {
-            throw NetworkError.invalidURL
-        }
-
-        var request = URLRequest(
-            url: url
+        try await execute(
+            endpoint: endpoint,
+            method: "PUT",
+            body: nil,
+            responseType: responseType
         )
-
-        request.httpMethod = "PUT"
-        request.setValue(
-            "application/json",
-            forHTTPHeaderField: "Content-Type"
-        )
-
-        do {
-
-            let (data, response) = try await session.data(
-                for: request
-            )
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.invalidResponse
-            }
-
-            guard 200...299 ~= httpResponse.statusCode else {
-                throw serverError(
-                    from: data,
-                    statusCode: httpResponse.statusCode
-                )
-            }
-
-            do {
-
-                return try JSONDecoder().decode(
-                    T.self,
-                    from: data
-                )
-
-            } catch {
-
-                throw NetworkError.decodingError
-            }
-
-        } catch {
-
-            if let error = error as? URLError,
-            error.code == .timedOut {
-                throw NetworkError.timeout
-            }
-
-            throw error
-        }
     }
 
     func put<T: Decodable, Body: Encodable>(
@@ -225,102 +67,173 @@ final class APIClient {
         body: Body,
         responseType: T.Type
     ) async throws -> T {
+        try await execute(
+            endpoint: endpoint,
+            method: "PUT",
+            body: try JSONEncoder().encode(body),
+            responseType: responseType
+        )
+    }
 
+    func delete<T: Decodable>(
+        endpoint: String,
+        responseType: T.Type
+    ) async throws -> T {
+        try await execute(
+            endpoint: endpoint,
+            method: "DELETE",
+            body: nil,
+            responseType: responseType
+        )
+    }
+
+    func executePatch<T: Decodable, Body: Encodable>(
+        endpoint: String,
+        body: Body,
+        responseType: T.Type
+    ) async throws -> T {
+        try await execute(
+            endpoint: endpoint,
+            method: "PATCH",
+            body: try JSONEncoder().encode(body),
+            responseType: responseType
+        )
+    }
+
+    func send<Body: Encodable>(
+        endpoint: String,
+        method: String,
+        body: Body
+    ) async throws {
+        let request = try makeRequest(
+            endpoint: endpoint,
+            method: method,
+            body: try JSONEncoder().encode(body)
+        )
+        let (data, response) = try await session.data(for: request)
+        try validate(data: data, response: response)
+    }
+
+    func makeURL(endpoint: String) throws -> URL {
         guard let url = URL(
-            string: baseURL + endpoint
+            string: Environment.baseURL + endpoint
         ) else {
             throw NetworkError.invalidURL
         }
+        return url
+    }
 
-        var request = URLRequest(
-            url: url
-        )
-
-        request.httpMethod = "PUT"
+    func authorize(_ request: inout URLRequest) {
+        guard let token = SecureTokenStore.shared.accessToken,
+              !token.isEmpty else {
+            return
+        }
         request.setValue(
-            "application/json",
-            forHTTPHeaderField: "Content-Type"
+            "Bearer \(token)",
+            forHTTPHeaderField: "Authorization"
         )
+    }
 
-        request.httpBody = try JSONEncoder().encode(
-            body
+    private func execute<T: Decodable>(
+        endpoint: String,
+        method: String,
+        body: Data?,
+        responseType: T.Type
+    ) async throws -> T {
+        let request = try makeRequest(
+            endpoint: endpoint,
+            method: method,
+            body: body
         )
-
         do {
-
-            let (data, response) = try await session.data(
-                for: request
-            )
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw NetworkError.invalidResponse
-            }
-
-            guard 200...299 ~= httpResponse.statusCode else {
-                throw serverError(
-                    from: data,
-                    statusCode: httpResponse.statusCode
-                )
-            }
-
+            let (data, response) = try await session.data(for: request)
+            try validate(data: data, response: response)
             do {
-
-                return try JSONDecoder().decode(
-                    T.self,
-                    from: data
-                )
-
+                return try JSONDecoder().decode(T.self, from: data)
             } catch {
-
                 throw NetworkError.decodingError
             }
-
-        } catch {
-
-            if let error = error as? URLError,
-            error.code == .timedOut {
-                throw NetworkError.timeout
-            }
-
-            throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw NetworkError.timeout
         }
     }
 
+    private func makeRequest(
+        endpoint: String,
+        method: String,
+        body: Data?
+    ) throws -> URLRequest {
+        let url = try makeURL(endpoint: endpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(
+            "application/json",
+            forHTTPHeaderField: "Accept"
+        )
+        if let body {
+            request.setValue(
+                "application/json",
+                forHTTPHeaderField: "Content-Type"
+            )
+            request.httpBody = body
+        }
+        authorize(&request)
+        return request
+    }
+
+    private func validate(
+        data: Data,
+        response: URLResponse
+    ) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        guard 200...299 ~= httpResponse.statusCode else {
+            if httpResponse.statusCode == 401 {
+                NotificationCenter.default.post(
+                    name: .sessionUnauthorized,
+                    object: nil
+                )
+            }
+            throw serverError(
+                from: data,
+                statusCode: httpResponse.statusCode
+            )
+        }
+    }
 
     private func serverError(
         from data: Data,
         statusCode: Int
     ) -> NetworkError {
-
         if let errorResponse = try? JSONDecoder().decode(
             APIErrorResponseDTO.self,
             from: data
         ) {
-
-            let message = errorResponse.detail
-            ?? errorResponse.message
-
+            let message = errorResponse.detail ?? errorResponse.message
             if let message,
                !message.trimmingCharacters(
                     in: .whitespacesAndNewlines
                ).isEmpty {
-
                 return .serverMessage(message)
             }
         }
-
         if statusCode == 409 {
             return .serverMessage(
-                "La operación no pudo completarse porque los datos cambiaron o la acción ya no es válida."
+                "Los datos cambiaron. Actualizá la pantalla antes de continuar."
             )
         }
-
         return .serverError
     }
 }
 
-private struct APIErrorResponseDTO: Decodable {
+extension Notification.Name {
+    static let sessionUnauthorized = Notification.Name(
+        "sessionUnauthorized"
+    )
+}
 
+private struct APIErrorResponseDTO: Decodable {
     let detail: String?
     let message: String?
 }

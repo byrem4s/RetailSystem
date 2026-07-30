@@ -27,6 +27,7 @@ final class UploadService {
             "multipart/form-data; boundary=\(boundary)",
             forHTTPHeaderField: "Content-Type"
         )
+        APIClient.shared.authorize(&request)
 
         var data = Data()
 
@@ -68,7 +69,7 @@ final class UploadService {
             )!
         )
 
-        let (_, response) = try await URLSession.shared.upload(
+        let (responseData, response) = try await URLSession.shared.upload(
             for: request,
             from: data
         )
@@ -79,47 +80,41 @@ final class UploadService {
         }
 
         guard 200...299 ~= httpResponse.statusCode else {
-
+            if let error = try? JSONDecoder().decode(
+                UploadServerErrorDTO.self,
+                from: responseData
+            ) {
+                throw NetworkError.serverMessage(error.detail)
+            }
             throw NetworkError.serverError
         }
     }
 
     func runPipeline() async throws {
 
-        guard let url = URL(
-            string:
-            Environment.baseURL
-            + Endpoints.runPipeline
-        ) else {
-
-            throw NetworkError.invalidURL
-        }
-
-        var request = URLRequest(
-            url: url
+        let response = try await APIClient.shared.post(
+            endpoint: Endpoints.runPipeline,
+            responseType: PipelineRunResponseDTO.self
         )
-
-        request.httpMethod = "POST"
-
-        let (_, response) =
-        try await URLSession.shared.data(
-            for: request
-        )
-
-        guard let httpResponse =
-                response as? HTTPURLResponse
-
-        else {
-
-            throw NetworkError.invalidResponse
-        }
-
-        guard 200...299 ~=
-                httpResponse.statusCode
-
-        else {
-
-            throw NetworkError.serverError
+        guard response.status == "SUCCESS",
+              response.data.executed else {
+            throw NetworkError.serverMessage(
+                response.data.message
+            )
         }
     }
+}
+
+private struct UploadServerErrorDTO: Decodable {
+    let detail: String
+}
+
+private struct PipelineRunResponseDTO: Decodable {
+    let status: String
+    let data: PipelineRunDataDTO
+}
+
+private struct PipelineRunDataDTO: Decodable {
+    let executed: Bool
+    let message: String
 }

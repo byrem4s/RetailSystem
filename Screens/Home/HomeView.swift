@@ -1,1367 +1,573 @@
 import SwiftUI
-import UIKit
 
 struct HomeView: View {
-
+    @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var profileStore: UserProfileStore
 
-    @StateObject private var vm = HomeViewModel()
-
-    @State private var showAllSummaryKPIs = false
-
-    @State private var showAnalysisDateSelector = false
-
+    @StateObject private var batchesVM = ExcelBatchViewModel()
+    @StateObject private var transfersVM = TransfersV2ViewModel()
     @StateObject private var notificationsVM = NotificationViewModel()
-    
-    @State private var showNotifications = false
-    @State private var showProfile = false
 
-    let onOpenAlerts: () -> Void
-    let onOpenActivityHistory: () -> Void
+    @State private var branches: [BranchV2DTO] = []
+    @State private var showsNotifications = false
+    @State private var showsProfile = false
 
-    init(
-        onOpenAlerts: @escaping () -> Void = {},
-        onOpenActivityHistory: @escaping () -> Void = {}
-    ) {
-        self.onOpenAlerts = onOpenAlerts
-        self.onOpenActivityHistory = onOpenActivityHistory
-    }
+    let onNavigate: (AppTab) -> Void
 
-    private var primarySummaryKPIs: [KPIModel] {
-
-        [
-            .init(
-                icon: "arrow.left.arrow.right",
-                color: AppColors.blue,
-                value: valueText(vm.homeData?.summary.movements),
-                title: "Unidades",
-                subtitle: "a mover"
-            ),
-            .init(
-                icon: "checkmark.circle.fill",
-                color: AppColors.green,
-                value: valueText(vm.homeData?.summary.completedReplenishments),
-                title: "Reposiciones",
-                subtitle: "completas"
-            ),
-            .init(
-                icon: "chart.pie.fill",
-                color: AppColors.orange,
-                value: valueText(vm.homeData?.summary.partialReplenishments),
-                title: "Reposiciones",
-                subtitle: "parciales"
-            ),
-            .init(
-                icon: "exclamationmark.triangle.fill",
-                color: AppColors.red,
-                value: valueText(vm.homeData?.summary.withoutReplenishment),
-                title: "Sin reposición",
-                subtitle: "stock insuficiente"
-            )
-        ]
-    }
-
-    private var extraSummaryKPIs: [KPIModel] {
-
-        [
-            .init(
-                icon: "shippingbox.fill",
-                color: AppColors.blue,
-                value: valueText(vm.homeData?.summary.suggestedUnits),
-                title: "Unidades",
-                subtitle: "sugeridas"
-            ),
-            .init(
-                icon: "checkmark.seal.fill",
-                color: AppColors.green,
-                value: valueText(vm.homeData?.summary.coveredUnits),
-                title: "Unidades",
-                subtitle: "cubiertas"
-            ),
-            .init(
-                icon: "clock.badge.exclamationmark.fill",
-                color: AppColors.orange,
-                value: valueText(vm.homeData?.summary.pendingUnits),
-                title: "Unidades",
-                subtitle: "pendientes"
-            ),
-            .init(
-                icon: "percent",
-                color: AppColors.green,
-                value: percentText(vm.homeData?.summary.coverageRate),
-                title: "Cobertura",
-                subtitle: "general"
-            ),
-            .init(
-                icon: "list.bullet.rectangle.fill",
-                color: AppColors.blue,
-                value: valueText(vm.homeData?.summary.detectedCases),
-                title: "Reposiciones ",
-                subtitle: "sugeridas"
-            ),
-            .init(
-                icon: "building.2.crop.circle.fill",
-                color: AppColors.red,
-                value: valueText(vm.homeData?.summary.branchesWithRisk),
-                title: "Sucursales",
-                subtitle: "con riesgo"
-            ),
-            .init(
-                icon: "clock.fill",
-                color: AppColors.orange,
-                value: vm.homeData?.summary.lastUpdate ?? "-",
-                title: "Última",
-                subtitle: "actualización"
-            )
-        ]
-    }
-
-    private var visibleSummaryKPIs: [KPIModel] {
-
-        showAllSummaryKPIs
-        ? primarySummaryKPIs + extraSummaryKPIs
-        : primarySummaryKPIs
-    }
+    private let branchService = UserManagementService()
 
     var body: some View {
-
-        ZStack {
-
-            ScrollView(showsIndicators: false) {
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 22
-                ) {
-
-                    headerSection
-
-                    userSection
-
-                    summarySection
-
-                    risksSection
-
-                    recentActivitySection
+        NavigationStack {
+            ResponsiveScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.large) {
+                    welcomeHeader
+                    operationalSummary
+                    quickActions
+                    latestUpdates
                 }
-                .padding(.top, 28)
-                .padding(18)
-                .padding(.bottom, 105)
             }
-
-            if vm.isLoading {
-
-                Color.black.opacity(0.20)
-                    .ignoresSafeArea()
-
-                ProgressView()
-                    .scaleEffect(1.4)
-            }
-        }
-        .background(AppColors.background)
-        .alert(
-            "Error",
-            isPresented: Binding<Bool>(
-                get: {
-                    vm.errorMessage != nil
-                },
-                set: { _ in
-                    vm.errorMessage = nil
-                }
-            ),
-            actions: {
-                Button("OK", role: .cancel) {
-                    vm.errorMessage = nil
-                }
-            },
-            message: {
-                Text(vm.errorMessage ?? "")
-            }
-        )
-        .alert(
-            "Sin información",
-            isPresented: Binding<Bool>(
-                get: {
-                    vm.historyMessage != nil
-                },
-                set: { _ in
-                    vm.historyMessage = nil
-                }
-            ),
-            actions: {
-                Button("OK", role: .cancel) {
-                    vm.historyMessage = nil
-                }
-            },
-            message: {
-                Text(vm.historyMessage ?? "")
-            }
-        )
-        .sheet(
-            isPresented: $showAnalysisDateSelector
-        ) {
-
-            AnalysisDateSelectorSheet(
-                selectedDate: $vm.selectedHistoryDate,
-                analyses: vm.historyAnalyses,
-                isLoading: vm.isHistoryLoading,
-                isHistoricalMode: vm.isHistoricalMode,
-                historicalLabel: vm.historicalLabel,
-                onSearch: {
-                    Task {
-                        await vm.loadHistoryForSelectedDate()
-                    }
-                },
-                onSelect: { item in
-                    Task {
-                        await vm.selectHistoricalAnalysis(
-                            item
-                        )
-                    }
-                },
-                onClear: {
-                    Task {
-                        await vm.clearHistoricalMode()
-                    }
-                }
-            )
-        }
-        .sheet(
-            isPresented: $showNotifications
-        ) {
-
-            NotificationsSheet(
-                vm: notificationsVM
-            )
-        }
-        .sheet(
-            isPresented: $showProfile
-        ) {
-
-            ProfileView()
-                .environmentObject(profileStore)
-        }
-        .task {
-            await vm.loadData()
-
-            profileStore.seedIfNeeded(
-                name: vm.userName,
-                branch: vm.userBranch
-            )
-
-            await notificationsVM.loadUnreadCount()
-        }
-        .onReceive(AppState.shared.$refreshID) { _ in
-            Task {
-                await vm.loadData()
-                await notificationsVM.loadUnreadCount()
-            }
-        }
-    }
-
-    private var headerSection: some View {
-
-        HStack {
-
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text("Home")
-                    .font(
-                        .system(
-                            size: 34,
-                            weight: .bold
-                        )
-                    )
-
-                Text("Resumen operativo")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-
-            Spacer()
-
-            HStack(spacing: 8) {
-
-                Button {
-
-                    showProfile = true
-
-                } label: {
-
-                    ZStack {
-
-                        Circle()
-                            .fill(AppColors.blue.opacity(0.14))
-                            .frame(width: 42, height: 42)
-
-                        Text(profileStore.initials)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(AppColors.blue)
-                    }
-                }
-                .accessibilityLabel("Abrir perfil")
-
-                Button {
-
-                    showNotifications = true
-
-                } label: {
-
-                    ZStack(alignment: .topTrailing) {
-
-                        Image(systemName: "bell")
-                            .font(
-                                .system(
-                                    size: 24,
-                                    weight: .semibold
+            .navigationTitle("Inicio")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showsNotifications = true
+                    } label: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell")
+                            if notificationsVM.unreadCount > 0 {
+                                Text(
+                                    notificationsVM.unreadCount > 9
+                                        ? "9+"
+                                        : "\(notificationsVM.unreadCount)"
                                 )
-                            )
-                            .foregroundColor(AppColors.primaryText)
-                            .frame(width: 44, height: 44)
-
-                        if notificationsVM.unreadCount > 0 {
-
-                            Text(
-                                notificationsVM.unreadCount > 99
-                                ? "99+"
-                                : "\(notificationsVM.unreadCount)"
-                            )
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(AppColors.red)
-                            .clipShape(Capsule())
-                            .offset(x: 4, y: 2)
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(4)
+                                .background(AppColors.red)
+                                .clipShape(Capsule())
+                                .offset(x: 9, y: -8)
+                            }
                         }
                     }
+                    .accessibilityLabel("Notificaciones")
+
+                    Button {
+                        showsProfile = true
+                    } label: {
+                        Text(initials)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(AppColors.blue)
+                            .frame(width: 32, height: 32)
+                            .background(AppColors.selection)
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Mi cuenta")
                 }
+            }
+            .task { await load() }
+            .refreshable { await load() }
+            .sheet(isPresented: $showsNotifications) {
+                NotificationsSheet(vm: notificationsVM)
+                    .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showsProfile) {
+                AccountView(branchName: branchName)
+                    .environmentObject(session)
+                    .environmentObject(profileStore)
+                    .presentationDetents([.medium, .large])
             }
         }
     }
 
-    private var userSection: some View {
+    private var welcomeHeader: some View {
+        AppCard(padding: 0) {
+            ZStack(alignment: .bottomLeading) {
+                AppColors.brandGradient
+                Circle()
+                    .fill(AppColors.cyan.opacity(0.17))
+                    .frame(width: 220, height: 220)
+                    .offset(x: 170, y: -70)
 
-        HStack(
-            alignment: .top
-        ) {
-
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text("Hola, \(profileStore.fullName)")
-                    .font(
-                        .system(
-                            size: 22,
-                            weight: .semibold
-                        )
+                VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                    StatusPill(
+                        title: roleLabel.uppercased(),
+                        color: AppColors.cyan
                     )
-
-                Text(profileStore.displayBranch)
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.secondaryText)
-
-                if vm.isHistoricalMode,
-                let historicalLabel = vm.historicalLabel {
-
-                    Text("Modo histórico · \(historicalLabel)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(AppColors.orange)
-                        .padding(.top, 4)
-                }
-            }
-
-            Spacer()
-
-            HStack(spacing: 6) {
-
-                Button {
-
-                    showProfile = true
-
-                } label: {
-
-                    Image(systemName: "person.crop.circle")
+                    Text("Hola, \(firstName)")
                         .font(
                             .system(
-                                size: 23,
-                                weight: .semibold
+                                .largeTitle,
+                                design: .rounded,
+                                weight: .bold
                             )
                         )
-                        .foregroundColor(AppColors.blue)
-                        .frame(width: 44, height: 44)
+                        .foregroundStyle(.white)
+                    Text(contextMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.76))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 590, alignment: .leading)
                 }
-                .accessibilityLabel("Editar perfil")
-
-                Button {
-
-                    showAnalysisDateSelector = true
-
-                } label: {
-
-                    Image(systemName: "calendar")
-                    .font(
-                        .system(
-                            size: 23,
-                            weight: .semibold
-                        )
-                    )
-                    .foregroundColor(
-                        vm.isHistoricalMode
-                        ? AppColors.orange
-                        : AppColors.primaryText
-                    )
-                    .frame(width: 44, height: 44)
-                }
+                .padding(AppSpacing.large)
             }
+            .frame(minHeight: 220)
+            .clipped()
         }
     }
 
-    private var summarySection: some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            sectionHeader(
-                title: "Resumen general",
-                actionTitle: showAllSummaryKPIs ? nil : "Ver más"
-            ) {
-
-                withAnimation(.easeInOut) {
-                    showAllSummaryKPIs = true
-                }
-            }
+    private var operationalSummary: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            Text("Qué requiere atención")
+                .font(AppTypography.sectionTitle)
 
             LazyVGrid(
                 columns: [
-                    GridItem(
-                        .adaptive(
-                            minimum: 145,
-                            maximum: 165
-                        ),
-                        spacing: 12
-                    )
+                    GridItem(.adaptive(minimum: 145), spacing: 12)
                 ],
-                alignment: .center,
                 spacing: 12
             ) {
-
-                ForEach(visibleSummaryKPIs) { item in
-
-                    summaryKPICard(item)
-                }
-            }
-
-            if showAllSummaryKPIs {
-
-                Button {
-
-                    withAnimation(.easeInOut) {
-                        showAllSummaryKPIs = false
-                    }
-
-                } label: {
-
-                    HStack(spacing: 6) {
-
-                        Text("Mostrar menos")
-
-                        Image(systemName: "chevron.up")
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(AppColors.blue)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppColors.card)
-                    .cornerRadius(16)
+                ForEach(summaryMetrics) { metric in
+                    SummaryMetricCard(metric: metric)
                 }
             }
         }
     }
 
-    private var risksSection: some View {
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            Text("Accesos rápidos")
+                .font(AppTypography.sectionTitle)
 
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            sectionHeader(
-                title: "Alertas activas",
-                actionTitle: "Ver más"
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 230), spacing: 12)
+                ],
+                spacing: 12
             ) {
-
-                onOpenAlerts()
-            }
-
-            HStack(spacing: 10) {
-
-                riskCard(
-                    icon: "exclamationmark.triangle.fill",
-                    title: "Riesgo crítico",
-                    value: valueText(vm.homeData?.risks.critical),
-                    color: AppColors.red
+                actionCard(
+                    title: role == .branchManager
+                        ? "Cargar mis ventas"
+                        : "Gestionar reposición",
+                    detail: role == .branchManager
+                        ? "Ver solicitudes y adjuntar el Excel."
+                        : "Abrir períodos, generar y distribuir F8.",
+                    icon: "arrow.triangle.2.circlepath",
+                    color: AppColors.blue,
+                    tab: .replenishment
                 )
-
-                riskCard(
-                    icon: "flame.fill",
-                    title: "Riesgo alto",
-                    value: valueText(vm.homeData?.risks.high),
-                    color: AppColors.orange
+                actionCard(
+                    title: role == .branchManager
+                        ? "Preparar y recibir"
+                        : "Movimientos",
+                    detail: role == .branchManager
+                        ? "Ver sólo las tareas de tu sucursal."
+                        : "Aprobar, coordinar y cerrar envíos.",
+                    icon: "shippingbox.and.arrow.backward",
+                    color: AppColors.orange,
+                    tab: .transfers
                 )
-
-                riskCard(
-                    icon: "clock.fill",
-                    title: "Riesgo medio",
-                    value: valueText(vm.homeData?.risks.medium),
-                    color: AppColors.blue
-                )
-            }
-        }
-    }
-
-    private var recentActivitySection: some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            sectionHeader(
-                title: "Actividad reciente",
-                actionTitle: "Ver más"
-            ) {
-
-                onOpenActivityHistory()
-            }
-
-            if vm.recentActivity.isEmpty {
-
-                EmptyStateView(
-                    icon: "clock",
-                    title: "Sin actividad reciente",
-                    message: "Todavía no hay movimientos registrados."
-                )
-
-            } else {
-
-                VStack(spacing: 12) {
-
-                    ForEach(vm.recentActivity.prefix(5)) { item in
-
-                        activityRow(item)
-                    }
-                }
-            }
-        }
-    }
-
-    private func sectionHeader(
-        title: String,
-        actionTitle: String?,
-        action: @escaping () -> Void
-    ) -> some View {
-
-        HStack {
-
-            Text(title)
-                .font(.title3)
-                .fontWeight(.bold)
-
-            Spacer()
-
-            if let actionTitle {
-
-                Button {
-
-                    action()
-
-                } label: {
-
-                    HStack(spacing: 4) {
-
-                        Text(actionTitle)
-
-                        Image(systemName: "chevron.right")
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(AppColors.blue)
-                }
-            }
-        }
-    }
-
-    private func summaryKPICard(
-        _ item: KPIModel
-    ) -> some View {
-
-        VStack(
-            alignment: .center,
-            spacing: 12
-        ) {
-
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(item.color.opacity(0.12))
-                    .frame(width: 48, height: 48)
-
-                Image(systemName: item.icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(item.color)
-            }
-
-            Text(item.value)
-                .font(.system(size: 27, weight: .bold))
-                .foregroundColor(AppColors.primaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            VStack(spacing: 3) {
-
-                Text(item.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-
-                Text(item.subtitle)
-                    .font(.system(size: 11))
-                    .foregroundColor(AppColors.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-            }
-        }
-        .padding(14)
-        .frame(
-            minHeight: 145
-        )
-        .frame(
-            maxWidth: .infinity,
-            alignment: .center
-        )
-        .background(AppColors.card)
-        .cornerRadius(22)
-    }
-
-    private func riskCard(
-        icon: String,
-        title: String,
-        value: String,
-        color: Color
-    ) -> some View {
-
-        VStack(
-            alignment: .center,
-            spacing: 10
-        ) {
-
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(color.opacity(0.12))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: icon)
-                    .foregroundColor(color)
-            }
-
-            Text(value)
-                .font(
-                    .system(
-                        size: 28,
-                        weight: .bold
+                if canManage {
+                    actionCard(
+                        title: "Usuarios y sucursales",
+                        detail: "Administrar el acceso y consultar la red.",
+                        icon: "person.2.badge.gearshape",
+                        color: AppColors.purple,
+                        tab: .management
                     )
-                )
-                .multilineTextAlignment(.center)
-
-            Text(title)
-                .font(
-                    .system(
-                        size: 12,
-                        weight: .semibold
-                    )
-                )
-                .foregroundColor(AppColors.primaryText)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-                .multilineTextAlignment(.center)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .background(AppColors.card)
-        .cornerRadius(22)
-    }
-
-    private func activityRow(
-        _ item: HomeRecentActivityDTO
-    ) -> some View {
-
-        RoundedContainer {
-
-            HStack(
-                alignment: .top,
-                spacing: 14
-            ) {
-
-                ZStack {
-
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(activityColor(item).opacity(0.12))
-                        .frame(width: 46, height: 46)
-
-                    Image(systemName: activityIcon(item))
-                        .foregroundColor(activityColor(item))
-                }
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 6
-                ) {
-
-                    HStack {
-
-                        Text(activityLabel(item))
-                            .font(
-                                .system(
-                                    size: 11,
-                                    weight: .bold
-                                )
-                            )
-                            .foregroundColor(activityColor(item))
-
-                        Spacer()
-
-                        Text(item.time)
-                            .font(.system(size: 11))
-                            .foregroundColor(AppColors.secondaryText)
-                    }
-
-                    Text(item.title)
-                        .font(
-                            .system(
-                                size: 15,
-                                weight: .semibold
-                            )
-                        )
-
-                    if !item.description.isEmpty {
-
-                        Text(item.description)
-                            .font(.system(size: 12))
-                            .foregroundColor(AppColors.secondaryText)
-                            .fixedSize(
-                                horizontal: false,
-                                vertical: true
-                            )
-                    }
-
-                    activityMetadata(
-                        item
+                    actionCard(
+                        title: "Historial",
+                        detail: "Consultar F8 de períodos anteriores.",
+                        icon: "clock.arrow.circlepath",
+                        color: AppColors.green,
+                        tab: .reports
                     )
                 }
             }
-            .padding()
         }
     }
 
-
-    private func activityMetadata(
-        _ item: HomeRecentActivityDTO
-    ) -> some View {
-
-        HStack(spacing: 8) {
-
-            metadataBadge(
-                title: "Origen",
-                value: item.source
-            )
-
-            if let executionID = item.executionID {
-
-                metadataBadge(
-                    title: "Run",
-                    value: "\(executionID)"
-                )
-            }
-
-            if let draftID = item.draftID {
-
-                metadataBadge(
-                    title: "F8",
-                    value: "\(draftID)"
-                )
-            }
-        }
-    }
-
-
-    private func metadataBadge(
-        title: String,
-        value: String
-    ) -> some View {
-
-        HStack(spacing: 4) {
-
-            Text(title)
-                .font(.system(size: 10))
-                .foregroundColor(AppColors.secondaryText)
-
-            Text(value)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(AppColors.primaryText)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(Color.gray.opacity(0.08))
-        .cornerRadius(10)
-    }
-
-
-    private func activityIcon(
-        _ item: HomeRecentActivityDTO
-    ) -> String {
-
-        let event = item.eventType.uppercased()
-
-        if event.hasPrefix("F8_") {
-            return "tablecells.fill"
-        }
-
-        if event == "REPORTS_GENERATED" {
-            return "doc.text.fill"
-        }
-
-        if event.contains("FAILED") || item.status.uppercased() == "FAILED" {
-            return "exclamationmark.triangle.fill"
-        }
-
-        if event.contains("COMPLETED") {
-            return "checkmark.circle.fill"
-        }
-
-        return "gearshape.fill"
-    }
-
-
-    private func activityLabel(
-        _ item: HomeRecentActivityDTO
-    ) -> String {
-
-        let source = item.source.uppercased()
-
-        if source == "PIPELINE" {
-            return "Pipeline"
-        }
-
-        if source == "REPORTS" {
-            return "Reporte"
-        }
-
-        if source == "F8" {
-            return "F8"
-        }
-
-        return source
-    }
-
-
-    private func activityColor(
-        _ item: HomeRecentActivityDTO
-    ) -> Color {
-
-        let severity = item.severity.uppercased()
-        let status = item.status.uppercased()
-
-        if severity == "ERROR" || status == "FAILED" {
-            return AppColors.red
-        }
-
-        if severity == "WARNING" {
-            return AppColors.orange
-        }
-
-        if severity == "SUCCESS" || status == "COMPLETED" || status == "CONFIRMED" {
-            return AppColors.green
-        }
-
-        if item.eventType.uppercased().hasPrefix("F8_") {
-            return AppColors.orange
-        }
-
-        return AppColors.blue
-    }
-
-    private func valueText(
-        _ value: Int?
-    ) -> String {
-
-        guard let value else {
-            return "-"
-        }
-
-        return "\(value)"
-    }
-
-    private func percentText(
-        _ value: Int?
-    ) -> String {
-
-        guard let value else {
-            return "-"
-        }
-
-        return "\(value)%"
-    }
-}
-
-struct HomeView_Previews: PreviewProvider {
-
-    static var previews: some View {
-        HomeView()
-            .environmentObject(
-                UserProfileStore()
-            )
-    }
-}
-
-struct ProfileView: View {
-
-    @EnvironmentObject private var profileStore: UserProfileStore
-    @EnvironmentObject private var session: SessionStore
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var firstName = ""
-    @State private var lastName = ""
-    @State private var branch = ""
-    @State private var selectedTheme: AppTheme = .light
-    @State private var validationMessage: String?
-
-    var body: some View {
-
-        NavigationView {
-
-            ZStack {
-
-                AppColors.background
-                    .ignoresSafeArea()
-
-                ScrollView(showsIndicators: false) {
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 20
-                    ) {
-
-                        identityCard
-
-                        personalInformationSection
-
-                        appearanceSection
-
-                        saveButton
-
-                        Button(role: .destructive) {
-                            Task {
-                                await session.logout()
-                                dismiss()
-                            }
-                        } label: {
-                            Label(
-                                "Cerrar sesión",
-                                systemImage: "rectangle.portrait.and.arrow.right"
-                            )
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                        }
-                        .buttonStyle(.bordered)
-
-                        Text("El nombre, rol y sucursal autorizada provienen de la cuenta del sistema. La apariencia se guarda en este dispositivo.")
-                            .font(.system(size: 12))
-                            .foregroundColor(AppColors.tertiaryText)
-                            .fixedSize(horizontal: false, vertical: true)
+    private var latestUpdates: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            HStack {
+                Text("Últimas novedades")
+                    .font(AppTypography.sectionTitle)
+                Spacer()
+                if !notificationsVM.notifications.isEmpty {
+                    Button("Ver todas") {
+                        showsNotifications = true
                     }
-                    .padding(18)
-                    .padding(.bottom, 24)
+                    .font(.subheadline.weight(.semibold))
                 }
             }
-            .navigationTitle("Perfil")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
 
-                ToolbarItem(
-                    placement: .topBarLeading
-                ) {
-
-                    Button("Cancelar") {
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                loadDraft()
-            }
-            .alert(
-                "Revisar perfil",
-                isPresented: Binding(
-                    get: {
-                        validationMessage != nil
-                    },
-                    set: { _ in
-                        validationMessage = nil
-                    }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(validationMessage ?? "")
-            }
-        }
-        .preferredColorScheme(
-            selectedTheme.colorScheme
-        )
-    }
-
-    private var identityCard: some View {
-
-        VStack(spacing: 14) {
-
-            ZStack {
-
-                Circle()
-                    .fill(AppColors.blue.opacity(0.14))
-                    .frame(width: 88, height: 88)
-
-                Text(draftInitials)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(AppColors.blue)
-            }
-
-            VStack(spacing: 4) {
-
-                Text(draftFullName)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(AppColors.primaryText)
-
-                Text(
-                    branch.trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    ).isEmpty
-                    ? "Sucursal sin definir"
-                    : branch
-                )
-                .font(.system(size: 14))
-                .foregroundColor(AppColors.secondaryText)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .padding(.horizontal, 18)
-        .background(AppColors.card)
-        .cornerRadius(26)
-        .overlay(
-            RoundedRectangle(cornerRadius: 26)
-                .stroke(AppColors.border.opacity(0.35))
-        )
-    }
-
-    private var personalInformationSection: some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            sectionTitle(
-                "Información personal",
-                icon: "person.text.rectangle"
-            )
-
-            profileField(
-                title: "Nombre",
-                placeholder: "Nombre",
-                text: $firstName,
-                contentType: .givenName
-            )
-
-            profileField(
-                title: "Apellido",
-                placeholder: "Apellido",
-                text: $lastName,
-                contentType: .familyName
-            )
-
-            profileField(
-                title: "Sucursal",
-                placeholder: "Ej. Calle 12",
-                text: $branch,
-                contentType: .organizationName
-            )
-        }
-        .padding(18)
-        .background(AppColors.card)
-        .cornerRadius(24)
-    }
-
-    private var appearanceSection: some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            sectionTitle(
-                "Apariencia",
-                icon: "paintbrush.fill"
-            )
-
-            Text("Elegí cómo querés ver la aplicación.")
-                .font(.system(size: 13))
-                .foregroundColor(AppColors.secondaryText)
-
-            HStack(spacing: 10) {
-
-                ForEach(AppTheme.allCases) { theme in
-
-                    Button {
-                        selectedTheme = theme
-                    } label: {
-
-                        VStack(spacing: 9) {
-
-                            Image(systemName: theme.icon)
-                                .font(.system(size: 20, weight: .semibold))
-
-                            Text(theme.title)
-                                .font(.system(size: 12, weight: .semibold))
-                                .lineLimit(1)
-                        }
-                        .foregroundColor(
-                            selectedTheme == theme
-                            ? AppColors.blue
-                            : AppColors.secondaryText
-                        )
+            AppCard {
+                if notificationsVM.isLoading
+                    && notificationsVM.notifications.isEmpty {
+                    ProgressView()
                         .frame(maxWidth: .infinity)
-                        .frame(height: 82)
-                        .background(
-                            selectedTheme == theme
-                            ? AppColors.blue.opacity(0.12)
-                            : AppColors.elevated
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18)
-                                .stroke(
-                                    selectedTheme == theme
-                                    ? AppColors.blue
-                                    : AppColors.border.opacity(0.35),
-                                    lineWidth: selectedTheme == theme ? 1.5 : 1
+                } else if notificationsVM.notifications.isEmpty {
+                    Label(
+                        "No hay novedades pendientes.",
+                        systemImage: "checkmark.circle"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(AppColors.secondaryText)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(
+                            Array(notificationsVM.notifications.prefix(3))
+                        ) { notification in
+                            HStack(
+                                alignment: .top,
+                                spacing: AppSpacing.medium
+                            ) {
+                                IconBadge(
+                                    systemName: updateIcon(notification),
+                                    color: notification.isRead
+                                        ? AppColors.secondaryText
+                                        : AppColors.blue,
+                                    size: 38
                                 )
-                        )
-                        .cornerRadius(18)
+                                VStack(
+                                    alignment: .leading,
+                                    spacing: AppSpacing.xSmall
+                                ) {
+                                    Text(notification.title)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(notification.message)
+                                        .font(.caption)
+                                        .foregroundStyle(
+                                            AppColors.secondaryText
+                                        )
+                                        .lineLimit(2)
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, AppSpacing.medium)
+
+                            if notification.id
+                                != notificationsVM.notifications
+                                .prefix(3).last?.id {
+                                Divider()
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
-
-            themePreview
-        }
-        .padding(18)
-        .background(AppColors.card)
-        .cornerRadius(24)
-    }
-
-    private var themePreview: some View {
-
-        HStack(spacing: 12) {
-
-            ZStack {
-
-                RoundedRectangle(cornerRadius: 13)
-                    .fill(AppColors.blue.opacity(0.14))
-                    .frame(width: 42, height: 42)
-
-                Image(systemName: "chart.bar.fill")
-                    .foregroundColor(AppColors.blue)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-
-                Text("Vista previa")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppColors.primaryText)
-
-                Text("Las tarjetas, textos y fondos se adaptan al tema seleccionado.")
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer()
-        }
-        .padding(14)
-        .background(AppColors.elevated)
-        .cornerRadius(18)
-    }
-
-    private var saveButton: some View {
-
-        Button {
-            saveProfile()
-        } label: {
-
-            HStack(spacing: 8) {
-
-                Image(systemName: "checkmark.circle.fill")
-
-                Text("Guardar cambios")
-            }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background(AppColors.blue)
-            .cornerRadius(18)
         }
     }
 
-    private func sectionTitle(
-        _ title: String,
-        icon: String
-    ) -> some View {
-
-        HStack(spacing: 9) {
-
-            Image(systemName: icon)
-                .foregroundColor(AppColors.blue)
-
-            Text(title)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(AppColors.primaryText)
-        }
-    }
-
-    private func profileField(
+    private func actionCard(
         title: String,
-        placeholder: String,
-        text: Binding<String>,
-        contentType: UITextContentType
+        detail: String,
+        icon: String,
+        color: Color,
+        tab: AppTab
     ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 7
-        ) {
-
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(AppColors.secondaryText)
-
-            TextField(
-                placeholder,
-                text: text
+        Button {
+            onNavigate(tab)
+        } label: {
+            HStack(alignment: .top, spacing: AppSpacing.medium) {
+                IconBadge(systemName: icon, color: color)
+                VStack(alignment: .leading, spacing: AppSpacing.xSmall) {
+                    Text(title)
+                        .font(AppTypography.cardTitle)
+                        .foregroundStyle(AppColors.primaryText)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: AppSpacing.small)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppColors.tertiaryText)
+            }
+            .padding(AppSpacing.regular)
+            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
+            .background(AppColors.card)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: AppSpacing.cardRadius,
+                    style: .continuous
+                )
             )
-            .textContentType(contentType)
-            .textInputAutocapitalization(.words)
-            .autocorrectionDisabled()
-            .font(.system(size: 15, weight: .medium))
-            .foregroundColor(AppColors.primaryText)
-            .padding(.horizontal, 14)
-            .frame(height: 48)
-            .background(AppColors.field)
-            .overlay(
-                RoundedRectangle(cornerRadius: 15)
-                    .stroke(AppColors.border.opacity(0.40))
-            )
-            .cornerRadius(15)
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: AppSpacing.cardRadius,
+                    style: .continuous
+                )
+                .stroke(AppColors.subtleBorder, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var summaryMetrics: [SummaryMetric] {
+        switch role {
+        case .branchManager?:
+            return [
+                SummaryMetric(
+                    title: "Ventas a cargar",
+                    value: "\(pendingOwnSales)",
+                    icon: "arrow.up.doc",
+                    color: AppColors.blue
+                ),
+                SummaryMetric(
+                    title: "Para preparar",
+                    value: "\(originTasks)",
+                    icon: "shippingbox",
+                    color: AppColors.orange
+                ),
+                SummaryMetric(
+                    title: "Para recibir",
+                    value: "\(destinationTasks)",
+                    icon: "tray.and.arrow.down",
+                    color: AppColors.green
+                ),
+                notificationMetric
+            ]
+        case .warehouse?:
+            return [
+                SummaryMetric(
+                    title: "Movimientos activos",
+                    value: "\(activeTransfers.count)",
+                    icon: "arrow.left.arrow.right",
+                    color: AppColors.orange
+                ),
+                SummaryMetric(
+                    title: "Para coordinar",
+                    value: "\(coordinationTasks)",
+                    icon: "truck.box",
+                    color: AppColors.blue
+                ),
+                notificationMetric
+            ]
+        default:
+            return [
+                SummaryMetric(
+                    title: "Períodos abiertos",
+                    value: "\(openBatches)",
+                    icon: "calendar",
+                    color: AppColors.blue
+                ),
+                SummaryMetric(
+                    title: "F8 para revisar",
+                    value: "\(reviewableBatches)",
+                    icon: "doc.text.magnifyingglass",
+                    color: AppColors.purple
+                ),
+                SummaryMetric(
+                    title: "Movimientos activos",
+                    value: "\(activeTransfers.count)",
+                    icon: "arrow.left.arrow.right",
+                    color: AppColors.orange
+                ),
+                notificationMetric
+            ]
         }
     }
 
-    private var draftFullName: String {
-
-        let values = [firstName, lastName]
-            .map {
-                $0.trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                )
-            }
-            .filter {
-                !$0.isEmpty
-            }
-
-        return values.isEmpty
-        ? "Nuevo usuario"
-        : values.joined(separator: " ")
+    private var notificationMetric: SummaryMetric {
+        SummaryMetric(
+            title: "Avisos nuevos",
+            value: "\(notificationsVM.unreadCount)",
+            icon: "bell",
+            color: AppColors.red
+        )
     }
 
-    private var draftInitials: String {
-
-        let first = firstName
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .first
-            .map(String.init)
-
-        let last = lastName
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .first
-            .map(String.init)
-
-        let value = [first, last]
-            .compactMap { $0 }
-            .joined()
-            .uppercased()
-
+    private var role: UserRole? { session.user?.role }
+    private var canManage: Bool {
+        role == .systemOwner || role == .companyAdmin
+    }
+    private var firstName: String {
+        session.user?.firstName.isEmpty == false
+            ? session.user?.firstName ?? "Equipo"
+            : "Equipo"
+    }
+    private var initials: String {
+        let first = session.user?.firstName.first.map(String.init) ?? ""
+        let last = session.user?.lastName.first.map(String.init) ?? ""
+        let value = (first + last).uppercased()
         return value.isEmpty ? "U" : value
     }
-
-    private func loadDraft() {
-
-        firstName = session.user?.firstName
-            ?? profileStore.firstName
-        lastName = session.user?.lastName
-            ?? profileStore.lastName
-        branch = profileStore.branch
-        selectedTheme = profileStore.theme
+    private var roleLabel: String {
+        session.user?.role.displayName ?? "Operaciones"
+    }
+    private var branchName: String? {
+        guard let id = session.user?.branchID else { return nil }
+        return branches.first { $0.id == id }?.name
+    }
+    private var branchCode: String? {
+        guard let id = session.user?.branchID else { return nil }
+        return branches.first { $0.id == id }?.code
+    }
+    private var contextMessage: String {
+        switch role {
+        case .branchManager?:
+            return (
+                "\(branchName ?? "Tu sucursal") · Revisá las ventas "
+                + "solicitadas y los movimientos que te corresponden."
+            )
+        case .warehouse?:
+            return "Coordiná los movimientos distribuidos y su despacho."
+        default:
+            return (
+                "Una vista breve de los períodos, F8 y movimientos "
+                + "que requieren una decisión."
+            )
+        }
     }
 
-    private func saveProfile() {
-
-        guard !firstName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ).isEmpty else {
-
-            validationMessage = "Ingresá el nombre del usuario."
-            return
+    private var pendingOwnSales: Int {
+        guard let branchCode else { return 0 }
+        return batchesVM.batches.filter {
+            $0.distributedAt == nil
+                && !$0.uploadedBranchCodes.contains(branchCode)
+        }.count
+    }
+    private var activeTransfers: [TransferV2DTO] {
+        transfersVM.transfers.filter {
+            !["COMPLETED", "REJECTED"].contains($0.status)
         }
+    }
+    private var originTasks: Int {
+        guard let branchID = session.user?.branchID else { return 0 }
+        return activeTransfers.filter { $0.originBranchID == branchID }.count
+    }
+    private var destinationTasks: Int {
+        guard let branchID = session.user?.branchID else { return 0 }
+        return activeTransfers.filter {
+            $0.destinationBranchID == branchID
+                && ["DISPATCHED", "PARTIALLY_RECEIVED"].contains($0.status)
+        }.count
+    }
+    private var coordinationTasks: Int {
+        activeTransfers.filter {
+            ["RECOMMENDED", "APPROVED", "PREPARING"].contains($0.status)
+        }.count
+    }
+    private var openBatches: Int {
+        batchesVM.batches.filter {
+            $0.distributedAt == nil
+                && ["DRAFT", "READY", "PROCESSING"].contains($0.status)
+        }.count
+    }
+    private var reviewableBatches: Int {
+        batchesVM.batches.filter {
+            $0.status == "COMPLETED" && $0.distributedAt == nil
+        }.count
+    }
 
-        profileStore.updateProfile(
-            firstName: firstName,
-            lastName: lastName,
-            branch: branch,
-            theme: selectedTheme
-        )
+    private func updateIcon(_ item: NotificationDTO) -> String {
+        switch item.notificationType {
+        case "SALES_REQUESTED": return "arrow.up.doc"
+        case "SALES_UPLOADED": return "checkmark.circle"
+        case "PREPARATION_REQUESTED": return "shippingbox"
+        case "BATCH_DISTRIBUTED": return "arrow.triangle.branch"
+        default: return "bell"
+        }
+    }
 
-        dismiss()
+    private func load() async {
+        await batchesVM.load()
+        await transfersVM.load()
+        await notificationsVM.loadNotifications()
+        if let values = try? await branchService.fetchBranches() {
+            branches = values
+        }
     }
 }
 
-struct ProfileView_Previews: PreviewProvider {
+private struct SummaryMetric: Identifiable {
+    let id = UUID()
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
+}
 
-    static var previews: some View {
-        ProfileView()
-            .environmentObject(
-                UserProfileStore()
-            )
-            .environmentObject(
-                SessionStore()
-            )
+private struct SummaryMetricCard: View {
+    let metric: SummaryMetric
+
+    var body: some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                IconBadge(
+                    systemName: metric.icon,
+                    color: metric.color,
+                    size: 38
+                )
+                Text(metric.value)
+                    .font(AppTypography.metric)
+                    .foregroundStyle(AppColors.primaryText)
+                Text(metric.title)
+                    .font(.caption)
+                    .foregroundStyle(AppColors.secondaryText)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 118, alignment: .leading)
+        }
+    }
+}
+
+private struct AccountView: View {
+    let branchName: String?
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var profileStore: UserProfileStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Cuenta") {
+                    LabeledContent(
+                        "Nombre",
+                        value: session.user?.fullName ?? "—"
+                    )
+                    LabeledContent(
+                        "Correo",
+                        value: session.user?.email ?? "—"
+                    )
+                    LabeledContent(
+                        "Rol",
+                        value: session.user?.role.displayName ?? "—"
+                    )
+                    if session.user?.branchID != nil {
+                        LabeledContent(
+                            "Sucursal asignada",
+                            value: branchName ?? "Asignada"
+                        )
+                    }
+                }
+
+                Section("Apariencia") {
+                    Picker("Tema", selection: $profileStore.theme) {
+                        ForEach(AppTheme.allCases) { theme in
+                            Label(theme.title, systemImage: theme.icon)
+                                .tag(theme)
+                        }
+                    }
+                }
+
+                Section {
+                    Button("Cerrar sesión", role: .destructive) {
+                        Task {
+                            dismiss()
+                            await session.logout()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Mi cuenta")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
     }
 }

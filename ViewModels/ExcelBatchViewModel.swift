@@ -12,6 +12,7 @@ final class ExcelBatchViewModel: ObservableObject {
         to: Date()
     ) ?? Date()
     @Published var periodTo = Date()
+    @Published var enforceSalesPeriod = false
     @Published var selectedBranchCode: String?
     @Published private(set) var isBusy = false
     @Published var errorMessage: String?
@@ -46,6 +47,7 @@ final class ExcelBatchViewModel: ObservableObject {
                     mode: mode,
                     periodFrom: Self.apiDate(periodFrom),
                     periodTo: Self.apiDate(periodTo),
+                    enforceSalesPeriod: enforceSalesPeriod,
                     expectedBranchCodes: nil
                 )
             )
@@ -122,6 +124,23 @@ final class ExcelBatchViewModel: ObservableObject {
             )
             downloadedFileLabel = "Compartir F8"
             noticeMessage = "F8 descargado."
+        }
+    }
+
+    func distribute() async {
+        guard let batch = selectedBatch else {
+            errorMessage = "Seleccioná un período."
+            return
+        }
+        await perform {
+            let result = try await service.distribute(batchID: batch.id)
+            replace(result.batch)
+            noticeMessage = result.totalTransfers == 0
+                ? "F8 distribuido. No había movimientos para crear."
+                : (
+                    "F8 distribuido: \(result.totalTransfers) movimientos "
+                    + "enviados a las sucursales."
+                )
         }
     }
 

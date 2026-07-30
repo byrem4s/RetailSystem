@@ -17,10 +17,8 @@ final class UserManagementViewModel: ObservableObject {
             isLoading = false
         }
         do {
-            async let loadedUsers = service.fetchUsers()
-            async let loadedBranches = service.fetchBranches()
-            users = try await loadedUsers
-            let loadedBranchValues = try await loadedBranches
+            users = try await service.fetchUsers()
+            let loadedBranchValues = try await service.fetchBranches()
             branches = loadedBranchValues.filter {
                 $0.active && !$0.isDepot
             }

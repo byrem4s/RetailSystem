@@ -1,6 +1,6 @@
 import Foundation
 
-enum Environment {
+enum AppEnvironment {
 
     static let baseURL: String = {
         if let configured = Bundle.main.object(

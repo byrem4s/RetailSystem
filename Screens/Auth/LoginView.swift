@@ -1,94 +1,238 @@
 import SwiftUI
 
 struct LoginView: View {
-
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var email = ""
     @State private var password = ""
+    @State private var showsPassword = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case email
+        case password
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
+        ZStack {
+            AppColors.brandGradient
+                .ignoresSafeArea()
 
-                VStack(spacing: 10) {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(AppColors.blue)
+            Circle()
+                .fill(AppColors.cyan.opacity(0.18))
+                .frame(width: 360, height: 360)
+                .blur(radius: 2)
+                .offset(x: 190, y: -330)
 
-                    Text("Reposición Mateu")
+            ScrollView {
+                VStack(spacing: horizontalSizeClass == .regular ? 40 : 28) {
+                    brandBlock
+                    loginCard
+                }
+                .frame(maxWidth: 520)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, horizontalSizeClass == .regular ? 72 : 36)
+                .frame(maxWidth: .infinity, minHeight: 700)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .onSubmit {
+            switch focusedField {
+            case .email:
+                focusedField = .password
+            case .password:
+                submit()
+            case nil:
+                break
+            }
+        }
+    }
+
+    private var brandBlock: some View {
+        VStack(spacing: AppSpacing.regular) {
+            HStack(spacing: AppSpacing.medium) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(.white)
+                    Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(AppColors.blue)
+                }
+                .frame(width: 62, height: 62)
+                .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
 
-                    Text(
-                        "Ingresá con el usuario asignado por la empresa."
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("MATEU")
+                        .font(.system(.title, design: .rounded, weight: .black))
+                        .tracking(1.6)
+                    Text("OPERACIONES")
+                        .font(.caption.weight(.bold))
+                        .tracking(2.1)
+                        .opacity(0.72)
+                }
+                .foregroundStyle(.white)
+            }
+
+            VStack(spacing: AppSpacing.small) {
+                Text("Reposición inteligente,\nsin planillas cruzadas.")
+                    .font(
+                        .system(
+                            horizontalSizeClass == .regular
+                                ? .largeTitle
+                                : .title,
+                            design: .rounded,
+                            weight: .bold
+                        )
                     )
-                    .font(.subheadline)
-                    .foregroundColor(AppColors.secondaryText)
                     .multilineTextAlignment(.center)
-                }
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                VStack(spacing: 14) {
-                    TextField("Correo", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.username)
-                        .padding()
-                        .background(AppColors.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text(
+                    "Ventas, stock y movimientos entre sucursales "
+                    + "en un único circuito."
+                )
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white.opacity(0.72))
+                .frame(maxWidth: 410)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
 
-                    SecureField("Contraseña", text: $password)
-                        .textContentType(.password)
-                        .padding()
-                        .background(AppColors.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
+    private var loginCard: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            VStack(alignment: .leading, spacing: AppSpacing.small) {
+                Text("Bienvenido")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundStyle(AppColors.primaryText)
+                Text("Ingresá con el usuario asignado por la empresa.")
+                    .font(.subheadline)
+                    .foregroundStyle(AppColors.secondaryText)
+            }
 
-                if let message = session.errorMessage {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                Button {
-                    Task {
-                        await session.login(
-                            email: email,
-                            password: password
-                        )
+            VStack(alignment: .leading, spacing: AppSpacing.regular) {
+                loginField(
+                    title: "Correo electrónico",
+                    icon: "envelope",
+                    content: {
+                        TextField("nombre@empresa.com", text: $email)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .textContentType(.username)
+                            .submitLabel(.next)
+                            .focused($focusedField, equals: .email)
                     }
-                } label: {
-                    HStack {
-                        if session.isWorking {
-                            ProgressView()
-                                .tint(.white)
-                        }
-                        Text(
-                            session.isWorking
-                                ? "Ingresando…"
-                                : "Ingresar"
-                        )
-                        .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(AppColors.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .disabled(
-                    email.trimmingCharacters(
-                        in: .whitespacesAndNewlines
-                    ).isEmpty
-                    || password.isEmpty
-                    || session.isWorking
                 )
 
-                Spacer()
+                loginField(
+                    title: "Contraseña",
+                    icon: "lock",
+                    content: {
+                        Group {
+                            if showsPassword {
+                                TextField("Tu contraseña", text: $password)
+                            } else {
+                                SecureField("Tu contraseña", text: $password)
+                            }
+                        }
+                        .textContentType(.password)
+                        .submitLabel(.go)
+                        .focused($focusedField, equals: .password)
+
+                        Button {
+                            showsPassword.toggle()
+                        } label: {
+                            Image(
+                                systemName: showsPassword
+                                    ? "eye.slash"
+                                    : "eye"
+                            )
+                            .foregroundStyle(AppColors.secondaryText)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            showsPassword
+                                ? "Ocultar contraseña"
+                                : "Mostrar contraseña"
+                        )
+                    }
+                )
             }
-            .padding(24)
-            .background(AppColors.background.ignoresSafeArea())
+
+            if let message = session.errorMessage {
+                Label(message, systemImage: "exclamationmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(AppColors.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button(action: submit) {
+                HStack(spacing: AppSpacing.small) {
+                    if session.isWorking {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "arrow.right")
+                    }
+                    Text(session.isWorking ? "Ingresando…" : "Ingresar")
+                }
+            }
+            .buttonStyle(PrimaryActionButtonStyle())
+            .disabled(!canSubmit)
+            .opacity(canSubmit ? 1 : 0.52)
+
+            Label(
+                "El acceso y cada acción quedan registrados.",
+                systemImage: "checkmark.shield"
+            )
+            .font(.caption)
+            .foregroundStyle(AppColors.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(horizontalSizeClass == .regular ? 32 : 24)
+        .background(AppColors.canvas)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: .black.opacity(0.20), radius: 30, y: 18)
+    }
+
+    private func loginField<Content: View>(
+        title: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppColors.secondaryText)
+            HStack(spacing: AppSpacing.medium) {
+                Image(systemName: icon)
+                    .foregroundStyle(AppColors.blue)
+                    .frame(width: 20)
+                content()
+            }
+            .appTextField()
+        }
+    }
+
+    private var canSubmit: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !password.isEmpty
+            && !session.isWorking
+    }
+
+    private var horizontalPadding: CGFloat {
+        horizontalSizeClass == .regular ? 40 : 20
+    }
+
+    private func submit() {
+        guard canSubmit else { return }
+        focusedField = nil
+        Task {
+            await session.login(email: email, password: password)
         }
     }
 }

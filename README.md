@@ -2,34 +2,40 @@
 
 ## Generar el proyecto
 
-La fuente del proyecto se mantiene con XcodeGen para evitar que referencias
-locales de Xcode queden fuera del repositorio.
+La fuente se mantiene con XcodeGen para evitar referencias locales de Xcode.
 
-1. Instalar XcodeGen en macOS.
-2. Ejecutar `xcodegen generate` dentro de esta carpeta.
-3. Abrir `RetailSystem.xcodeproj`.
-4. Configurar el equipo de firma y el bundle identifier.
+1. Instalá XcodeGen en macOS.
+2. Ejecutá `xcodegen generate` dentro de esta carpeta.
+3. Abrí `RetailSystem.xcodeproj`.
+4. Configurá el equipo de firma y el bundle identifier.
+5. Cambiá `API_BASE_URL` en `Config/Debug.xcconfig` por la IP de la Mac que
+   ejecuta el backend. Para un iPhone físico no uses `localhost`.
 
-Debug usa la dirección local definida en `Config/Debug.xcconfig`. Release
-requiere reemplazar `api.example.invalid` por una API HTTPS antes de distribuir.
+La app requiere iOS 17 o posterior y se adapta a iPhone y iPad, tanto en
+vertical como en horizontal. Release exige una URL HTTPS real.
 
-## Seguridad y roles
+## Flujo de reposición
 
-Los tokens se guardan en Keychain. La navegación disponible depende del rol:
+- Por sucursal: cada encargado recibe una solicitud y carga su propio Excel de
+  ventas; el administrador carga el stock general.
+- Consolidado: el administrador carga un Excel con todas las ventas y otro con
+  el stock general.
+- En ambos modos el administrador genera el F8, lo revisa con la vista previa
+  nativa de iOS y decide cuándo distribuirlo.
+- Al distribuir se crean los movimientos. Cada encargado ve sólo lo que su
+  sucursal prepara o recibe; depósito coordina la operación.
+- Historial sólo consulta F8 ya generados. No acepta cargas.
 
-- `SYSTEM_OWNER` y `COMPANY_ADMIN`: panel completo y transferencias.
-- `WAREHOUSE`: operación de transferencias.
-- `BRANCH_MANAGER`: transferencias de su sucursal, rechazo previo al despacho
-  y confirmación de recepción.
+Si se activa la validación estricta de período, el Excel de ventas debe incluir
+`PERIODO_DESDE` y `PERIODO_HASTA`. Las plantillas descargables ya contienen
+esas columnas.
 
-## Reposición por Excel
+## Roles
 
-La pestaña Reposición permite trabajar mientras no exista integración directa
-con TS:
+- `SYSTEM_OWNER`: acceso total y creación de administradores.
+- `COMPANY_ADMIN`: operación global y gestión de usuarios operativos.
+- `WAREHOUSE`: aprobación, preparación, despacho y recepción.
+- `BRANCH_MANAGER`: ventas y movimientos de su sucursal.
 
-- modo distribuido: cada encargado carga las ventas de su sucursal;
-- modo centralizado: propietario o administrador carga las ventas de toda la
-  empresa;
-- propietario o administrador carga el stock, ejecuta el análisis y comparte
-  el F8;
-- las plantillas autorizadas se descargan desde la misma pantalla.
+Los tokens se almacenan en Keychain y las acciones sensibles se validan otra
+vez en el backend.

@@ -5,6 +5,17 @@ struct BranchV2DTO: Decodable, Identifiable {
     let code: String
     let name: String
     let isDepot: Bool
+    let isSelling: Bool
+    let businessGroup: String
+    let branchType: String
+    let discipline: String
+    let salesChannel: String
+    let isOutlet: Bool
+    let acceptsAdult: Bool
+    let acceptsKids: Bool
+    let kidsProfile: String
+    let workingDays: [Int]
+    let demandWeight: Double
     let distanceBand: String
     let returnBlockDays: Int
     let active: Bool
@@ -14,6 +25,17 @@ struct BranchV2DTO: Decodable, Identifiable {
         case code
         case name
         case isDepot = "is_depot"
+        case isSelling = "is_selling"
+        case businessGroup = "business_group"
+        case branchType = "branch_type"
+        case discipline
+        case salesChannel = "sales_channel"
+        case isOutlet = "is_outlet"
+        case acceptsAdult = "accepts_adult"
+        case acceptsKids = "accepts_kids"
+        case kidsProfile = "kids_profile"
+        case workingDays = "working_days"
+        case demandWeight = "demand_weight"
         case distanceBand = "distance_band"
         case returnBlockDays = "return_block_days"
         case active

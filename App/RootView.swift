@@ -1,75 +1,42 @@
 import SwiftUI
 
 struct RootView: View {
-
     @EnvironmentObject private var session: SessionStore
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
-
-        ZStack(alignment: .bottom) {
-
-            currentScreen
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AppColors.background)
-
-            VStack(spacing: 0) {
-
-                Spacer(minLength: 0)
-
-                BottomTabBar(
-                    selectedTab: $selectedTab,
-                    tabs: availableTabs
-                )
+        TabView(selection: $selectedTab) {
+            ForEach(availableTabs) { tab in
+                screen(for: tab)
+                    .tabItem {
+                        Label(tab.title, systemImage: tab.icon)
+                    }
+                    .tag(tab)
             }
-            .ignoresSafeArea(
-                .container,
-                edges: .bottom
-            )
         }
-        .background(AppColors.background)
-        .onAppear {
-            ensureSelectedTabIsAvailable()
-        }
+        .tint(AppColors.blue)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(AppColors.canvas, for: .tabBar)
+        .onAppear { ensureSelectedTabIsAvailable() }
         .onChange(of: session.user?.role) { _, _ in
             ensureSelectedTabIsAvailable()
         }
     }
 
     @ViewBuilder
-    private var currentScreen: some View {
-
-        switch selectedTab {
-
+    private func screen(for tab: AppTab) -> some View {
+        switch tab {
         case .home:
-            HomeView(
-                onOpenAlerts: {
-                    selectedTab = .alerts
-                },
-                onOpenActivityHistory: {
-                    AppState.shared.requestActivityHistoryFocus()
-                    selectedTab = .activity
-                }
-            )
-
-        case .alerts:
-            AlertsView()
-
-        case .transfers:
-            TransfersV2View()
-
-        case .users:
-            UserManagementView()
-
-        case .activity:
-            ActivityView()
-
-        case .branches:
-            BranchesView()
-
+            HomeView { destination in
+                guard availableTabs.contains(destination) else { return }
+                selectedTab = destination
+            }
         case .replenishment:
             ReplenishmentView()
-
+        case .transfers:
+            TransfersV2View()
+        case .management:
+            ManagementView()
         case .reports:
             ReportsView()
         }
@@ -77,40 +44,27 @@ struct RootView: View {
 
     private var availableTabs: [AppTab] {
         guard let role = session.user?.role else {
-            return [.transfers]
+            return [.home]
         }
-        if role.canViewLegacyDashboard {
+        switch role {
+        case .systemOwner, .companyAdmin:
             return [
                 .home,
                 .replenishment,
                 .transfers,
-                .users,
-                .branches,
+                .management,
                 .reports
             ]
+        case .branchManager:
+            return [.home, .replenishment, .transfers]
+        case .warehouse:
+            return [.home, .transfers]
         }
-        if role == .branchManager {
-            return [.replenishment, .transfers]
-        }
-        return [.transfers]
     }
 
     private func ensureSelectedTabIsAvailable() {
         if !availableTabs.contains(selectedTab) {
-            selectedTab = availableTabs.first ?? .transfers
+            selectedTab = availableTabs.first ?? .home
         }
-    }
-}
-
-struct RootView_Previews: PreviewProvider {
-
-    static var previews: some View {
-        RootView()
-            .environmentObject(
-                UserProfileStore()
-            )
-            .environmentObject(
-                SessionStore()
-            )
     }
 }

@@ -114,9 +114,22 @@ final class APIClient {
         try validate(data: data, response: response)
     }
 
+    func send(
+        endpoint: String,
+        method: String
+    ) async throws {
+        let request = try makeRequest(
+            endpoint: endpoint,
+            method: method,
+            body: nil
+        )
+        let (data, response) = try await session.data(for: request)
+        try validate(data: data, response: response)
+    }
+
     func makeURL(endpoint: String) throws -> URL {
         guard let url = URL(
-            string: Environment.baseURL + endpoint
+            string: AppEnvironment.baseURL + endpoint
         ) else {
             throw NetworkError.invalidURL
         }

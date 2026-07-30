@@ -1,54 +1,37 @@
 import Foundation
 
 final class NotificationService {
-
     func fetchNotifications(
         unreadOnly: Bool = false
-    ) async throws -> NotificationsResponseDTO {
-
-        var endpoint = "/notifications"
-
-        if unreadOnly {
-            endpoint += "?unread_only=true"
-        }
-
-        let response = try await APIClient.shared.fetch(
-            endpoint: endpoint,
-            responseType: NotificationsAPIResponseDTO.self
+    ) async throws -> [NotificationDTO] {
+        let query = unreadOnly ? "?unread_only=true" : ""
+        return try await APIClient.shared.fetch(
+            endpoint: "/v2/notifications\(query)",
+            responseType: [NotificationDTO].self
         )
-
-        return response.data
     }
 
     func fetchUnreadCount() async throws -> Int {
-
         let response = try await APIClient.shared.fetch(
-            endpoint: "/notifications/unread-count",
-            responseType: NotificationUnreadCountAPIResponseDTO.self
+            endpoint: "/v2/notifications/unread-count",
+            responseType: NotificationUnreadCountDTO.self
         )
-
-        return response.data.unread
+        return response.count
     }
 
     func markAsRead(
         notificationID: Int
     ) async throws -> NotificationDTO {
-
-        let response = try await APIClient.shared.put(
-            endpoint: "/notifications/\(notificationID)/read",
-            responseType: NotificationReadAPIResponseDTO.self
+        try await APIClient.shared.put(
+            endpoint: "/v2/notifications/\(notificationID)/read",
+            responseType: NotificationDTO.self
         )
-
-        return response.data
     }
 
-    func markAllAsRead() async throws -> Int {
-
-        let response = try await APIClient.shared.put(
-            endpoint: "/notifications/read-all",
-            responseType: MarkAllNotificationsReadAPIResponseDTO.self
+    func markAllAsRead() async throws {
+        try await APIClient.shared.send(
+            endpoint: "/v2/notifications/read-all",
+            method: "PUT"
         )
-
-        return response.data.updated
     }
 }

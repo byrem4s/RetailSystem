@@ -53,12 +53,14 @@ struct ExcelBatchCreateRequestDTO: Encodable {
     let mode: ExcelBatchMode
     let periodFrom: String
     let periodTo: String
+    let enforceSalesPeriod: Bool
     let expectedBranchCodes: [String]?
 
     enum CodingKeys: String, CodingKey {
         case mode
         case periodFrom = "period_from"
         case periodTo = "period_to"
+        case enforceSalesPeriod = "enforce_sales_period"
         case expectedBranchCodes = "expected_branch_codes"
     }
 }
@@ -92,6 +94,7 @@ struct ExcelBatchDTO: Decodable, Identifiable {
     let status: String
     let periodFrom: String
     let periodTo: String
+    let enforceSalesPeriod: Bool
     let expectedBranchCodes: [String]
     let uploadedBranchCodes: [String]
     let missingBranchCodes: [String]
@@ -101,6 +104,8 @@ struct ExcelBatchDTO: Decodable, Identifiable {
     let errorSummary: String?
     let createdAt: String
     let completedAt: String?
+    let distributedAt: String?
+    let distributedByID: Int?
     let updatedAt: String
     let uploads: [ExcelUploadDTO]
 
@@ -111,6 +116,7 @@ struct ExcelBatchDTO: Decodable, Identifiable {
         case status
         case periodFrom = "period_from"
         case periodTo = "period_to"
+        case enforceSalesPeriod = "enforce_sales_period"
         case expectedBranchCodes = "expected_branch_codes"
         case uploadedBranchCodes = "uploaded_branch_codes"
         case missingBranchCodes = "missing_branch_codes"
@@ -120,6 +126,8 @@ struct ExcelBatchDTO: Decodable, Identifiable {
         case errorSummary = "error_summary"
         case createdAt = "created_at"
         case completedAt = "completed_at"
+        case distributedAt = "distributed_at"
+        case distributedByID = "distributed_by_id"
         case updatedAt = "updated_at"
         case uploads
     }
@@ -138,5 +146,17 @@ struct ExcelBatchAnalysisDTO: Decodable {
         case batch
         case algorithmVersion = "algorithm_version"
         case runID = "run_id"
+    }
+}
+
+struct ExcelBatchDistributionDTO: Decodable {
+    let batch: ExcelBatchDTO
+    let transfersCreated: Int
+    let totalTransfers: Int
+
+    enum CodingKeys: String, CodingKey {
+        case batch
+        case transfersCreated = "transfers_created"
+        case totalTransfers = "total_transfers"
     }
 }

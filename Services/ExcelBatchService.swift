@@ -56,6 +56,15 @@ final class ExcelBatchService {
         )
     }
 
+    func distribute(
+        batchID: Int
+    ) async throws -> ExcelBatchDistributionDTO {
+        try await APIClient.shared.post(
+            endpoint: "/v2/excel-batches/\(batchID)/distribute",
+            responseType: ExcelBatchDistributionDTO.self
+        )
+    }
+
     func downloadF8(batchID: Int) async throws -> URL {
         try await downloadFile(
             endpoint: "/v2/excel-batches/\(batchID)/f8.xlsx",
@@ -121,10 +130,7 @@ final class ExcelBatchService {
         body.appendMultipartFile(
             name: "file",
             filename: fileURL.lastPathComponent,
-            mimeType: (
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
+            mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             data: try Data(contentsOf: fileURL),
             boundary: boundary
         )

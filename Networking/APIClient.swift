@@ -8,8 +8,9 @@ final class APIClient {
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 20
-        config.timeoutIntervalForResource = 60
+        config.waitsForConnectivity = false
+        config.timeoutIntervalForRequest = 12
+        config.timeoutIntervalForResource = 15
         return URLSession(configuration: config)
     }()
 
@@ -110,7 +111,7 @@ final class APIClient {
             method: method,
             body: try JSONEncoder().encode(body)
         )
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await perform(request)
         try validate(data: data, response: response)
     }
 
@@ -123,7 +124,7 @@ final class APIClient {
             method: method,
             body: nil
         )
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await perform(request)
         try validate(data: data, response: response)
     }
 
@@ -158,16 +159,12 @@ final class APIClient {
             method: method,
             body: body
         )
+        let (data, response) = try await perform(request)
+        try validate(data: data, response: response)
         do {
-            let (data, response) = try await session.data(for: request)
-            try validate(data: data, response: response)
-            do {
-                return try JSONDecoder().decode(T.self, from: data)
-            } catch {
-                throw NetworkError.decodingError
-            }
-        } catch let error as URLError where error.code == .timedOut {
-            throw NetworkError.timeout
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw NetworkError.decodingError
         }
     }
 
@@ -178,6 +175,7 @@ final class APIClient {
     ) throws -> URLRequest {
         let url = try makeURL(endpoint: endpoint)
         var request = URLRequest(url: url)
+        request.timeoutInterval = 12
         request.httpMethod = method
         request.setValue(
             "application/json",
@@ -192,6 +190,29 @@ final class APIClient {
         }
         authorize(&request)
         return request
+    }
+
+    private func perform(
+        _ request: URLRequest
+    ) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch let error as URLError {
+            switch error.code {
+            case .timedOut:
+                throw NetworkError.timeout
+            case .appTransportSecurityRequiresSecureConnection:
+                throw NetworkError.localConnectionBlocked
+            case .cannotConnectToHost,
+                 .cannotFindHost,
+                 .dataNotAllowed,
+                 .networkConnectionLost,
+                 .notConnectedToInternet:
+                throw NetworkError.connectionUnavailable
+            default:
+                throw error
+            }
+        }
     }
 
     private func validate(

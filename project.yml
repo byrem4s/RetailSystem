@@ -29,6 +29,11 @@ targets:
         CFBundleShortVersionString: 2.0.0
         CFBundleVersion: 2
         LSRequiresIPhoneOS: true
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: >-
+          Reposición Mateu necesita conectarse al servidor de la empresa
+          durante el desarrollo y la operación en la red interna.
         UILaunchStoryboardName: LaunchScreen
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

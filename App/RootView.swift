@@ -14,6 +14,7 @@ struct RootView: View {
                     .tag(tab)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .tint(AppColors.blue)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarBackground(AppColors.canvas, for: .tabBar)

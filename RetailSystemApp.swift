@@ -16,6 +16,7 @@ struct RetailSystemApp: App {
                     LoginView()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .environmentObject(profileStore)
             .environmentObject(sessionStore)
             .preferredColorScheme(profileStore.theme.colorScheme)

@@ -26,8 +26,8 @@ targets:
       properties:
         API_BASE_URL: $(API_BASE_URL)
         CFBundleDisplayName: Reposición Mateu
-        CFBundleShortVersionString: 2.0.0
-        CFBundleVersion: 2
+        CFBundleShortVersionString: "2.0.0"
+        CFBundleVersion: "2"
         LSRequiresIPhoneOS: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -50,9 +50,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
       configs:
         Debug:
-          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
+          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: "YES"
         Release:
-          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: NO
+          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: "NO"
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig

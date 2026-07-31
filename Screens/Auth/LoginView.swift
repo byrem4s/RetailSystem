@@ -164,10 +164,26 @@ struct LoginView: View {
             }
 
             if let message = session.errorMessage {
-                Label(message, systemImage: "exclamationmark.circle.fill")
+                VStack(alignment: .leading, spacing: AppSpacing.small) {
+                    Label(
+                        message,
+                        systemImage: "exclamationmark.circle.fill"
+                    )
                     .font(.footnote)
                     .foregroundStyle(AppColors.red)
                     .fixedSize(horizontal: false, vertical: true)
+
+                    Text("Servidor configurado: \(AppEnvironment.baseURL)")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(AppColors.secondaryText)
+                        .textSelection(.enabled)
+                }
+            } else if session.isWorking {
+                Text("Conectando con \(AppEnvironment.baseURL)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(AppColors.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
 
             Button(action: submit) {

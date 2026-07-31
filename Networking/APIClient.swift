@@ -199,7 +199,8 @@ final class APIClient {
             return try await session.data(for: request)
         } catch let error as URLError {
             switch error.code {
-            case .timedOut:
+            case .cancelled,
+                 .timedOut:
                 throw NetworkError.timeout
             case .appTransportSecurityRequiresSecureConnection:
                 throw NetworkError.localConnectionBlocked

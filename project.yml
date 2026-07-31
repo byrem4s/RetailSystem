@@ -50,12 +50,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
       configs:
         Debug:
-          base:
-            INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
-          xcconfig: Config/Debug.xcconfig
+          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
         Release:
-          base:
-            INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: NO
-          xcconfig: Config/Release.xcconfig
+          INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: NO
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
     scheme:
       testTargets: []

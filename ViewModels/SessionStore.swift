@@ -52,7 +52,7 @@ final class SessionStore: ObservableObject {
             isWorking = false
         }
         do {
-            let pair = try await authService.login(
+            let pair = try await loginWithDeadline(
                 email: email.trimmingCharacters(
                     in: .whitespacesAndNewlines
                 ),
@@ -61,6 +61,35 @@ final class SessionStore: ObservableObject {
             try persist(pair)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func loginWithDeadline(
+        email: String,
+        password: String
+    ) async throws -> TokenPairDTO {
+        let loginTask = Task {
+            try await authService.login(
+                email: email,
+                password: password
+            )
+        }
+        let deadlineTask = Task {
+            try await Task.sleep(for: .seconds(12))
+            loginTask.cancel()
+        }
+
+        defer {
+            deadlineTask.cancel()
+        }
+
+        do {
+            return try await loginTask.value
+        } catch {
+            if loginTask.isCancelled {
+                throw NetworkError.timeout
+            }
+            throw error
         }
     }
 

@@ -9,6 +9,7 @@ struct ReplenishmentView: View {
     @State private var showingStockPicker = false
     @State private var showingDistributionConfirmation = false
     @State private var showingFilePreview = false
+    @State private var showingF8Editor = false
     @State private var showsAdminOverride = false
 
     private let branchService = UserManagementService()
@@ -101,6 +102,11 @@ struct ReplenishmentView: View {
                 if let url = viewModel.downloadedFileURL {
                     FilePreview(url: url)
                         .ignoresSafeArea()
+                }
+            }
+            .sheet(isPresented: $showingF8Editor) {
+                if let batchID = viewModel.selectedBatchID {
+                    F8EditorView(batchID: batchID)
                 }
             }
             .confirmationDialog(
@@ -542,6 +548,15 @@ struct ReplenishmentView: View {
         }
 
         if batch.completedAt != nil {
+            if batch.distributedAt == nil {
+                Button {
+                    showingF8Editor = true
+                } label: {
+                    Label("Editar borrador F8", systemImage: "slider.horizontal.3")
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+            }
+
             HStack(spacing: AppSpacing.medium) {
                 Button {
                     Task {

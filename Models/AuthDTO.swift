@@ -9,9 +9,9 @@ enum UserRole: String, Codable {
     var displayName: String {
         switch self {
         case .systemOwner:
-            return "Propietario del sistema"
-        case .companyAdmin:
             return "Administrador"
+        case .companyAdmin:
+            return "Jefe de empresa"
         case .branchManager:
             return "Encargado de sucursal"
         case .warehouse:
@@ -30,6 +30,10 @@ enum UserRole: String, Codable {
     }
 
     var canViewLegacyDashboard: Bool {
+        self == .systemOwner || self == .companyAdmin
+    }
+
+    var canViewGlobalIntelligence: Bool {
         self == .systemOwner || self == .companyAdmin
     }
 }

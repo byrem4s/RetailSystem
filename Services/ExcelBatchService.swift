@@ -65,6 +65,43 @@ final class ExcelBatchService {
         )
     }
 
+    func fetchRecommendations(
+        batchID: Int
+    ) async throws -> F8RecommendationListDTO {
+        try await APIClient.shared.fetch(
+            endpoint: "/v2/excel-batches/\(batchID)/recommendations",
+            responseType: F8RecommendationListDTO.self
+        )
+    }
+
+    func updateRecommendation(
+        batchID: Int,
+        recommendationID: Int,
+        quantity: Int
+    ) async throws -> F8RecommendationListDTO {
+        try await APIClient.shared.executePatch(
+            endpoint: (
+                "/v2/excel-batches/\(batchID)/recommendations/"
+                + "\(recommendationID)"
+            ),
+            body: F8RecommendationUpdateDTO(quantity: quantity),
+            responseType: F8RecommendationListDTO.self
+        )
+    }
+
+    func deleteRecommendation(
+        batchID: Int,
+        recommendationID: Int
+    ) async throws -> F8RecommendationListDTO {
+        try await APIClient.shared.delete(
+            endpoint: (
+                "/v2/excel-batches/\(batchID)/recommendations/"
+                + "\(recommendationID)"
+            ),
+            responseType: F8RecommendationListDTO.self
+        )
+    }
+
     func downloadF8(batchID: Int) async throws -> URL {
         try await downloadFile(
             endpoint: "/v2/excel-batches/\(batchID)/f8.xlsx",

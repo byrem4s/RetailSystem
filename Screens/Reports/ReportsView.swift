@@ -4,6 +4,7 @@ struct ReportsView: View {
     @StateObject private var viewModel = ExcelBatchViewModel()
     @State private var filter: HistoryFilter = .all
     @State private var showingFilePreview = false
+    @State private var intelligenceBatchID: Int?
 
     private enum HistoryFilter: String, CaseIterable, Identifiable {
         case all = "Todos"
@@ -72,6 +73,16 @@ struct ReportsView: View {
                 if let url = viewModel.downloadedFileURL {
                     FilePreview(url: url)
                         .ignoresSafeArea()
+                }
+            }
+            .sheet(
+                isPresented: Binding(
+                    get: { intelligenceBatchID != nil },
+                    set: { if !$0 { intelligenceBatchID = nil } }
+                )
+            ) {
+                if let batchID = intelligenceBatchID {
+                    BatchIntelligenceSheet(batchID: batchID, isGlobal: true)
                 }
             }
             .alert(
@@ -184,18 +195,27 @@ struct ReportsView: View {
                     Spacer()
                 }
 
-                Button {
-                    viewModel.select(batch)
-                    Task {
-                        await viewModel.downloadF8()
-                        if viewModel.downloadedFileURL != nil {
-                            showingFilePreview = true
-                        }
+                HStack(spacing: AppSpacing.medium) {
+                    Button {
+                        intelligenceBatchID = batch.id
+                    } label: {
+                        Label("Análisis", systemImage: "waveform.path.ecg")
                     }
-                } label: {
-                    Label("Abrir F8", systemImage: "arrow.down.doc")
+                    .buttonStyle(SecondaryActionButtonStyle())
+
+                    Button {
+                        viewModel.select(batch)
+                        Task {
+                            await viewModel.downloadF8()
+                            if viewModel.downloadedFileURL != nil {
+                                showingFilePreview = true
+                            }
+                        }
+                    } label: {
+                        Label("F8", systemImage: "arrow.down.doc")
+                    }
+                    .buttonStyle(SecondaryActionButtonStyle())
                 }
-                .buttonStyle(SecondaryActionButtonStyle())
             }
         }
     }

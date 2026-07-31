@@ -7,6 +7,7 @@ struct HomeView: View {
     @StateObject private var batchesVM = ExcelBatchViewModel()
     @StateObject private var transfersVM = TransfersV2ViewModel()
     @StateObject private var notificationsVM = NotificationViewModel()
+    @StateObject private var intelligenceVM = IntelligenceViewModel()
 
     @State private var branches: [BranchV2DTO] = []
     @State private var showsNotifications = false
@@ -21,6 +22,12 @@ struct HomeView: View {
             ResponsiveScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.large) {
                     welcomeHeader
+                    if role != .warehouse {
+                        IntelligenceDashboardSection(
+                            viewModel: intelligenceVM,
+                            isGlobal: role?.canViewGlobalIntelligence == true
+                        )
+                    }
                     operationalSummary
                     quickActions
                     latestUpdates
@@ -475,6 +482,9 @@ struct HomeView: View {
         await batchesVM.load()
         await transfersVM.load()
         await notificationsVM.loadNotifications()
+        if role != .warehouse {
+            await intelligenceVM.load()
+        }
         if let values = try? await branchService.fetchBranches() {
             branches = values
         }

@@ -160,3 +160,34 @@ struct ExcelBatchDistributionDTO: Decodable {
         case totalTransfers = "total_transfers"
     }
 }
+
+struct F8RecommendationRowDTO: Decodable, Identifiable {
+    let id: Int
+    let origin: String
+    let destination: String
+    let sku: String
+    let size: String
+    let quantity: Int
+    let maxQuantity: Int
+    let neededQuantity: Int
+    let fulfillmentStatus: String
+    let priorityScore: Double
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, origin, destination, sku, size, quantity, reason
+        case maxQuantity = "max_quantity"
+        case neededQuantity = "needed_quantity"
+        case fulfillmentStatus = "fulfillment_status"
+        case priorityScore = "priority_score"
+    }
+}
+
+struct F8RecommendationListDTO: Decodable {
+    let editable: Bool
+    let rows: [F8RecommendationRowDTO]
+}
+
+struct F8RecommendationUpdateDTO: Encodable {
+    let quantity: Int
+}

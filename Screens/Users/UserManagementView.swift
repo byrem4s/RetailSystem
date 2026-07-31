@@ -327,13 +327,13 @@ private struct CreateUserSheet: View {
     private var permissionDescription: String {
         switch role {
         case .companyAdmin:
-            return "Accede a la operación global, excepto crear otros administradores."
+            return "Ve toda la empresa y administra la operación, sin crear otros jefes."
         case .branchManager:
             return "Sólo ve solicitudes y movimientos de la sucursal asignada."
         case .warehouse:
             return "Opera aprobaciones, preparación, despacho y recepción."
         case .systemOwner:
-            return "Acceso total."
+            return "Administrador del sistema con acceso total."
         }
     }
 

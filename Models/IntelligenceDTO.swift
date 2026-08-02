@@ -146,11 +146,43 @@ struct IntelligenceDashboardDTO: Decodable {
     let trend: [IntelligenceTrendPointDTO]
     let branches: [BranchHealthDTO]
     let alerts: [ProductAlertDTO]
+    let products: [F8ProductDTO]
 
     enum CodingKeys: String, CodingKey {
-        case scope, batch, metrics, trend, branches, alerts
+        case scope, batch, metrics, trend, branches, alerts, products
         case previousHealthScore = "previous_health_score"
         case trendDelta = "trend_delta"
     }
 }
 
+struct F8ProductDTO: Decodable, Identifiable {
+    let key: String
+    let branchCode: String
+    let branchName: String
+    let sku: String
+    let size: String
+    let description: String?
+    let brand: String?
+    let category: String?
+    let currentStock: Int
+    let targetStock: Int
+    let neededQuantity: Int
+    let allocatedQuantity: Int
+    let residualQuantity: Int
+    let fulfillmentStatus: String
+    let origins: [String]
+
+    var id: String { key }
+
+    enum CodingKeys: String, CodingKey {
+        case key, sku, size, description, brand, category, origins
+        case branchCode = "branch_code"
+        case branchName = "branch_name"
+        case currentStock = "current_stock"
+        case targetStock = "target_stock"
+        case neededQuantity = "needed_quantity"
+        case allocatedQuantity = "allocated_quantity"
+        case residualQuantity = "residual_quantity"
+        case fulfillmentStatus = "fulfillment_status"
+    }
+}

@@ -10,6 +10,7 @@ struct TransferV2DTO: Decodable, Identifiable {
     let destinationBranch: String
     let sku: String
     let size: String
+    let transferType: String
     let status: String
     let fulfillmentStatus: String
     let neededQuantity: Int
@@ -19,6 +20,8 @@ struct TransferV2DTO: Decodable, Identifiable {
     let receivedQuantity: Int?
     let rejectionReason: String?
     let discrepancyNote: String?
+    let requestNote: String?
+    let estimatedDeliveryDate: String?
     let version: Int
     let createdAt: String
     let approvedAt: String?
@@ -36,6 +39,7 @@ struct TransferV2DTO: Decodable, Identifiable {
         case destinationBranch = "destination_branch"
         case sku
         case size
+        case transferType = "transfer_type"
         case status
         case fulfillmentStatus = "fulfillment_status"
         case neededQuantity = "needed_quantity"
@@ -45,6 +49,8 @@ struct TransferV2DTO: Decodable, Identifiable {
         case receivedQuantity = "received_quantity"
         case rejectionReason = "rejection_reason"
         case discrepancyNote = "discrepancy_note"
+        case requestNote = "request_note"
+        case estimatedDeliveryDate = "estimated_delivery_date"
         case version
         case createdAt = "created_at"
         case approvedAt = "approved_at"
@@ -61,6 +67,7 @@ struct TransferV2DTO: Decodable, Identifiable {
 
     var displayStatus: String {
         switch status {
+        case "REQUESTED": return "Esperando aprobación"
         case "RECOMMENDED": return "Recomendada"
         case "APPROVED": return "Aprobada"
         case "PREPARING": return "En preparación"
@@ -70,6 +77,41 @@ struct TransferV2DTO: Decodable, Identifiable {
         case "REJECTED": return "Rechazada"
         default: return status
         }
+    }
+}
+
+struct CustomerRequestOptionDTO: Decodable, Identifiable, Hashable {
+    let originBranchID: Int
+    let originBranch: String
+    let sku: String
+    let size: String
+    let description: String?
+    let brand: String?
+    let category: String?
+    let availableQuantity: Int
+
+    var id: String { "\(originBranchID)|\(sku)|\(size)" }
+
+    enum CodingKeys: String, CodingKey {
+        case sku, size, description, brand, category
+        case originBranchID = "origin_branch_id"
+        case originBranch = "origin_branch"
+        case availableQuantity = "available_quantity"
+    }
+}
+
+struct CustomerRequestCreateDTO: Encodable {
+    let originBranchID: Int
+    let destinationBranchID: Int?
+    let sku: String
+    let size: String
+    let quantity: Int
+    let note: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sku, size, quantity, note
+        case originBranchID = "origin_branch_id"
+        case destinationBranchID = "destination_branch_id"
     }
 }
 

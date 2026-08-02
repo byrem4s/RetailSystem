@@ -75,7 +75,10 @@ struct HomeView: View {
             .task { await load() }
             .refreshable { await load() }
             .sheet(isPresented: $showsNotifications) {
-                NotificationsSheet(vm: notificationsVM)
+                NotificationsSheet(
+                    vm: notificationsVM,
+                    onNavigate: onNavigate
+                )
                     .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $showsProfile) {
@@ -558,6 +561,14 @@ private struct AccountView: View {
                             Label(theme.title, systemImage: theme.icon)
                                 .tag(theme)
                         }
+                    }
+                }
+
+                Section("Preferencias") {
+                    NavigationLink {
+                        NotificationPreferencesView()
+                    } label: {
+                        Label("Notificaciones", systemImage: "bell.badge")
                     }
                 }
 

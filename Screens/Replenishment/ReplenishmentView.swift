@@ -11,6 +11,7 @@ struct ReplenishmentView: View {
     @State private var showingFilePreview = false
     @State private var showingF8Editor = false
     @State private var showsAdminOverride = false
+    @State private var showingDeleteConfirmation = false
 
     private let branchService = UserManagementService()
 
@@ -123,6 +124,18 @@ struct ReplenishmentView: View {
                     "Se crearán los movimientos y cada encargado verá "
                     + "únicamente lo que su sucursal debe preparar o recibir."
                 )
+            }
+            .confirmationDialog(
+                "¿Eliminar esta reposición en carga?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Eliminar reposición", role: .destructive) {
+                    Task { await viewModel.deleteSelectedBatch() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Se eliminarán sus archivos parciales. Esta acción queda auditada.")
             }
             .alert(
                 "No se pudo completar",
@@ -429,6 +442,15 @@ struct ReplenishmentView: View {
                     } else {
                         branchWorkflow(batch)
                     }
+
+                    if canManage && batch.status == "DRAFT" {
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            Label("Eliminar reposición en carga", systemImage: "trash")
+                        }
+                        .buttonStyle(SecondaryActionButtonStyle())
+                    }
                 }
             }
         }
@@ -467,6 +489,40 @@ struct ReplenishmentView: View {
                     : "Distribuido",
                 complete: batch.distributedAt != nil
             )
+        }
+
+        if batch.mode == .distributed {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: AppSpacing.small) {
+                    ForEach(batch.expectedBranchCodes, id: \.self) { code in
+                        let uploaded = batch.uploadedBranchCodes.contains(code)
+                        HStack {
+                            Image(
+                                systemName: uploaded
+                                    ? "checkmark.circle.fill"
+                                    : "clock"
+                            )
+                            .foregroundStyle(
+                                uploaded ? AppColors.green : AppColors.orange
+                            )
+                            Text(branchDisplayName(code))
+                                .font(.subheadline)
+                            Spacer()
+                            Text(uploaded ? "Cargado" : "Pendiente")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppColors.secondaryText)
+                        }
+                    }
+                }
+                .padding(.top, AppSpacing.small)
+            } label: {
+                Label(
+                    "Estado de cargas · \(batch.uploadedBranchCodes.count)/\(batch.expectedBranchCodes.count)",
+                    systemImage: "person.3.sequence.fill"
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+            .tint(AppColors.blue)
         }
 
         if batch.mode == .centralized && batch.distributedAt == nil {
@@ -825,6 +881,10 @@ struct ReplenishmentView: View {
         batch.missingBranchCodes.isEmpty
             ? batch.expectedBranchCodes
             : batch.missingBranchCodes
+    }
+
+    private func branchDisplayName(_ code: String) -> String {
+        branchCatalog.first { $0.code == code }?.name ?? code
     }
 
     private func statusLabel(_ batch: ExcelBatchDTO) -> String {

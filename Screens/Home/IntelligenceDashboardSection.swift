@@ -35,6 +35,8 @@ struct IntelligenceDashboardSection: View {
     @State private var selectedAlert: ProductAlertDTO?
     @State private var showsAllAlerts = false
     @State private var showsAllBranches = false
+    @State private var selectedBranch: BranchHealthDTO?
+    @State private var selectedProductMetric: ProductMetricFilter?
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.medium) {
@@ -71,8 +73,31 @@ struct IntelligenceDashboardSection: View {
         }
         .sheet(isPresented: $showsAllBranches) {
             if let branches = viewModel.dashboard?.branches {
-                BranchHealthListView(branches: branches)
+                BranchHealthListView(
+                    branches: branches,
+                    selectedBranch: $selectedBranch
+                )
             }
+        }
+        .sheet(item: $selectedBranch) { branch in
+            BranchF8DetailView(
+                branch: branch,
+                products: viewModel.dashboard?.products.filter {
+                    $0.branchCode == branch.branchCode
+                } ?? [],
+                alerts: viewModel.dashboard?.alerts.filter {
+                    $0.branchCode == branch.branchCode
+                } ?? [],
+                selectedAlert: $selectedAlert
+            )
+        }
+        .sheet(item: $selectedProductMetric) { filter in
+            F8ProductListView(
+                title: filter.title,
+                products: products(for: filter),
+                alerts: viewModel.dashboard?.alerts ?? [],
+                selectedAlert: $selectedAlert
+            )
         }
     }
 
@@ -186,25 +211,29 @@ struct IntelligenceDashboardSection: View {
                 "Sin resolver",
                 value: "\(metrics.unresolvedUnits)",
                 icon: "exclamationmark.triangle.fill",
-                color: metrics.unresolvedUnits > 0 ? AppColors.red : AppColors.green
+                color: metrics.unresolvedUnits > 0 ? AppColors.red : AppColors.green,
+                action: { selectedProductMetric = .unresolved }
             )
             intelligenceMetric(
                 "Asignadas",
                 value: "\(metrics.allocatedUnits)",
                 icon: "arrow.left.arrow.right",
-                color: AppColors.blue
+                color: AppColors.blue,
+                action: { selectedProductMetric = .allocated }
             )
             intelligenceMetric(
                 "Reposición parcial",
                 value: "\(metrics.partialProducts)",
                 icon: "circle.lefthalf.filled",
-                color: AppColors.orange
+                color: AppColors.orange,
+                action: { selectedProductMetric = .partial }
             )
             intelligenceMetric(
                 "Conflictos outlet",
                 value: "\(metrics.outletConflicts)",
                 icon: "tag.slash.fill",
-                color: AppColors.purple
+                color: AppColors.purple,
+                action: { selectedProductMetric = .outlet }
             )
         }
     }
@@ -213,20 +242,55 @@ struct IntelligenceDashboardSection: View {
         _ title: String,
         value: String,
         icon: String,
-        color: Color
+        color: Color,
+        action: @escaping () -> Void
     ) -> some View {
-        AppCard {
-            HStack(spacing: AppSpacing.medium) {
-                IconBadge(systemName: icon, color: color, size: 38)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(value)
-                        .font(.title2.bold())
-                    Text(title)
-                        .font(.caption)
-                        .foregroundStyle(AppColors.secondaryText)
+        Button(action: action) {
+            AppCard {
+                HStack(spacing: AppSpacing.medium) {
+                    IconBadge(systemName: icon, color: color, size: 38)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(value)
+                            .font(.title2.bold())
+                            .foregroundStyle(AppColors.primaryText)
+                        Text(title)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.secondaryText)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(AppColors.tertiaryText)
                 }
+                .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func products(for filter: ProductMetricFilter) -> [F8ProductDTO] {
+        guard let dashboard = viewModel.dashboard else { return [] }
+        switch filter {
+        case .unresolved:
+            return dashboard.products.filter { $0.residualQuantity > 0 }
+        case .allocated:
+            return dashboard.products.filter { $0.allocatedQuantity > 0 }
+        case .partial:
+            return dashboard.products.filter {
+                $0.fulfillmentStatus == "PARTIAL"
+            }
+        case .outlet:
+            let keys = Set(
+                dashboard.alerts
+                    .filter {
+                        $0.reasonCode == "OUTLET_POLICY"
+                            || $0.reasonCode == "OUTLET_IN_LINE_STORE"
+                    }
+                    .map { "\($0.branchCode)|\($0.sku)|\($0.size)" }
+            )
+            return dashboard.products.filter {
+                keys.contains("\($0.branchCode)|\($0.sku)|\($0.size)")
+            }
         }
     }
 
@@ -280,7 +344,9 @@ struct IntelligenceDashboardSection: View {
                 }
             }
             ForEach(branches.prefix(5)) { branch in
-                BranchHealthRow(branch: branch)
+                BranchHealthRow(branch: branch) {
+                    selectedBranch = branch
+                }
             }
         }
     }
@@ -342,9 +408,11 @@ struct IntelligenceDashboardSection: View {
 
 private struct BranchHealthRow: View {
     let branch: BranchHealthDTO
+    let action: () -> Void
 
     var body: some View {
-        AppCard {
+        Button(action: action) {
+            AppCard {
             HStack(spacing: AppSpacing.medium) {
                 ZStack {
                     Circle()
@@ -387,8 +455,13 @@ private struct BranchHealthRow: View {
                     .labelStyle(.iconOnly)
                     .accessibilityLabel(trendText(delta))
                 }
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(AppColors.tertiaryText)
             }
         }
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -555,6 +628,7 @@ private struct AlertListView: View {
 
 private struct BranchHealthListView: View {
     let branches: [BranchHealthDTO]
+    @Binding var selectedBranch: BranchHealthDTO?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -562,7 +636,10 @@ private struct BranchHealthListView: View {
             ScrollView {
                 LazyVStack(spacing: AppSpacing.medium) {
                     ForEach(branches) { branch in
-                        BranchHealthRow(branch: branch)
+                        BranchHealthRow(branch: branch) {
+                            dismiss()
+                            selectedBranch = branch
+                        }
                     }
                 }
                 .padding(AppSpacing.regular)
@@ -575,6 +652,189 @@ private struct BranchHealthListView: View {
                     Button("Cerrar") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+private struct BranchF8DetailView: View {
+    let branch: BranchHealthDTO
+    let products: [F8ProductDTO]
+    let alerts: [ProductAlertDTO]
+    @Binding var selectedAlert: ProductAlertDTO?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                    AppCard {
+                        VStack(alignment: .leading, spacing: AppSpacing.small) {
+                            Text(branch.branchName)
+                                .font(AppTypography.pageTitle)
+                            LabeledContent("Salud", value: "\(branch.healthScore)/100")
+                            LabeledContent(
+                                "Unidades sin resolver",
+                                value: "\(branch.unresolvedUnits)"
+                            )
+                            LabeledContent("Variantes", value: "\(branch.needs)")
+                        }
+                    }
+                    Text("Productos del F8")
+                        .font(AppTypography.sectionTitle)
+                    if products.isEmpty {
+                        AppCard {
+                            Label(
+                                "La sucursal no tiene productos en este F8.",
+                                systemImage: "checkmark.circle.fill"
+                            )
+                            .foregroundStyle(AppColors.green)
+                        }
+                    } else {
+                        ForEach(products) { product in
+                            AppCard {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(product.description ?? product.sku)
+                                            .font(.subheadline.weight(.semibold))
+                                        Spacer()
+                                        StatusPill(
+                                            title: product.fulfillmentStatus,
+                                            color: product.residualQuantity == 0
+                                                ? AppColors.green
+                                                : AppColors.orange
+                                        )
+                                    }
+                                    Text("SKU \(product.sku) · Talle \(product.size)")
+                                        .font(.caption)
+                                        .foregroundStyle(AppColors.secondaryText)
+                                    Text(
+                                        "Necesita \(product.neededQuantity) · "
+                                        + "asignado \(product.allocatedQuantity) · "
+                                        + "faltan \(product.residualQuantity)"
+                                    )
+                                    .font(.caption.weight(.semibold))
+                                    if !product.origins.isEmpty {
+                                        Text("Origen: \(product.origins.joined(separator: ", "))")
+                                            .font(.caption)
+                                            .foregroundStyle(AppColors.secondaryText)
+                                    }
+                                    if let alert = alerts.first(where: {
+                                        $0.sku == product.sku && $0.size == product.size
+                                    }) {
+                                        Button("Ver explicación y recomendación") {
+                                            dismiss()
+                                            selectedAlert = alert
+                                        }
+                                        .font(.caption.weight(.semibold))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(AppSpacing.regular)
+            }
+            .background(AppColors.background)
+            .navigationTitle("Detalle de sucursal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private enum ProductMetricFilter: String, Identifiable {
+    case unresolved
+    case allocated
+    case partial
+    case outlet
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .unresolved: return "Productos sin resolver"
+        case .allocated: return "Productos asignados"
+        case .partial: return "Reposiciones parciales"
+        case .outlet: return "Conflictos outlet"
+        }
+    }
+}
+
+private struct F8ProductListView: View {
+    let title: String
+    let products: [F8ProductDTO]
+    let alerts: [ProductAlertDTO]
+    @Binding var selectedAlert: ProductAlertDTO?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: AppSpacing.medium) {
+                    if products.isEmpty {
+                        ContentUnavailableView(
+                            "No hay productos",
+                            systemImage: "checkmark.circle",
+                            description: Text(
+                                "Este indicador no tiene productos en el F8 actual."
+                            )
+                        )
+                    } else {
+                        ForEach(products) { product in
+                            AppCard {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(product.description ?? product.sku)
+                                            .font(.subheadline.weight(.semibold))
+                                        Spacer()
+                                        Text("T. \(product.size)")
+                                            .font(.caption.weight(.semibold))
+                                    }
+                                    Text(product.branchName)
+                                        .font(.caption)
+                                        .foregroundStyle(AppColors.blue)
+                                    Text(
+                                        "SKU \(product.sku) · necesita "
+                                        + "\(product.neededQuantity) · asignado "
+                                        + "\(product.allocatedQuantity) · faltan "
+                                        + "\(product.residualQuantity)"
+                                    )
+                                    .font(.caption)
+                                    .foregroundStyle(AppColors.secondaryText)
+                                    if let alert = alert(for: product) {
+                                        Button("Ver motivo y recomendación") {
+                                            dismiss()
+                                            selectedAlert = alert
+                                        }
+                                        .font(.caption.weight(.semibold))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(AppSpacing.regular)
+            }
+            .background(AppColors.background)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func alert(for product: F8ProductDTO) -> ProductAlertDTO? {
+        alerts.first {
+            $0.branchCode == product.branchCode
+                && $0.sku == product.sku
+                && $0.size == product.size
         }
     }
 }

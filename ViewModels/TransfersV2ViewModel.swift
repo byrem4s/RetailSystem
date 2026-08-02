@@ -7,6 +7,7 @@ final class TransfersV2ViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var workingTransferID: Int?
     @Published var errorMessage: String?
+    @Published private(set) var customerRequestOptions: [CustomerRequestOptionDTO] = []
 
     private let service = TransferV2Service()
 
@@ -20,6 +21,41 @@ final class TransfersV2ViewModel: ObservableObject {
             transfers = try await service.fetchTransfers()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadCustomerRequestOptions() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            customerRequestOptions = try await service.fetchCustomerRequestOptions()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func createCustomerRequest(
+        option: CustomerRequestOptionDTO,
+        destinationBranchID: Int?,
+        quantity: Int,
+        note: String?
+    ) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let created = try await service.createCustomerRequest(
+                option: option,
+                destinationBranchID: destinationBranchID,
+                quantity: quantity,
+                note: note
+            )
+            transfers.insert(created, at: 0)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

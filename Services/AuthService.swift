@@ -46,4 +46,26 @@ final class AuthService {
             )
         )
     }
+
+    func forgotPassword(email: String) async throws -> ForgotPasswordResponseDTO {
+        try await client.post(
+            endpoint: "/auth/forgot-password",
+            body: ForgotPasswordRequestDTO(email: email),
+            responseType: ForgotPasswordResponseDTO.self
+        )
+    }
+
+    func resetPassword(
+        token: String,
+        newPassword: String
+    ) async throws -> PasswordResetResultDTO {
+        try await client.post(
+            endpoint: "/auth/reset-password",
+            body: ResetPasswordRequestDTO(
+                token: token,
+                newPassword: newPassword
+            ),
+            responseType: PasswordResetResultDTO.self
+        )
+    }
 }

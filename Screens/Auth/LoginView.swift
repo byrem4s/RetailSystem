@@ -7,6 +7,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showsPassword = false
+    @State private var showsRecovery = false
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -46,6 +47,9 @@ struct LoginView: View {
             case nil:
                 break
             }
+        }
+        .sheet(isPresented: $showsRecovery) {
+            PasswordRecoveryView(initialEmail: email)
         }
     }
 
@@ -201,6 +205,12 @@ struct LoginView: View {
             .disabled(!canSubmit)
             .opacity(canSubmit ? 1 : 0.52)
 
+            Button("¿Olvidaste tu contraseña?") {
+                showsRecovery = true
+            }
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+
             Label(
                 "El acceso y cada acción quedan registrados.",
                 systemImage: "checkmark.shield"
@@ -249,6 +259,112 @@ struct LoginView: View {
         focusedField = nil
         Task {
             await session.login(email: email, password: password)
+        }
+    }
+}
+
+private struct PasswordRecoveryView: View {
+    let initialEmail: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var email: String
+    @State private var token = ""
+    @State private var password = ""
+    @State private var confirmation = ""
+    @State private var message: String?
+    @State private var errorMessage: String?
+    @State private var isWorking = false
+
+    private let service = AuthService()
+
+    init(initialEmail: String) {
+        self.initialEmail = initialEmail
+        _email = State(initialValue: initialEmail)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Solicitar código") {
+                    TextField("Correo", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                    Button("Enviar instrucciones") {
+                        Task { await requestCode() }
+                    }
+                    .disabled(email.isEmpty || isWorking)
+                }
+
+                Section("Crear contraseña nueva") {
+                    TextField("Código recibido", text: $token)
+                        .textInputAutocapitalization(.never)
+                    SecureField("Nueva contraseña", text: $password)
+                    SecureField("Repetir contraseña", text: $confirmation)
+                    Text("Debe tener al menos 12 caracteres.")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.secondaryText)
+                    Button("Actualizar contraseña") {
+                        Task { await changePassword() }
+                    }
+                    .disabled(
+                        token.count < 20
+                            || password.count < 12
+                            || password != confirmation
+                            || isWorking
+                    )
+                }
+
+                if let message {
+                    Section {
+                        Label(message, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(AppColors.green)
+                    }
+                }
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.circle")
+                            .foregroundStyle(AppColors.red)
+                    }
+                }
+            }
+            .navigationTitle("Recuperar contraseña")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func requestCode() async {
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let result = try await service.forgotPassword(email: email)
+            message = result.message
+            if let debugToken = result.resetToken {
+                token = debugToken
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func changePassword() async {
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            let result = try await service.resetPassword(
+                token: token,
+                newPassword: password
+            )
+            message = result.message
+            password = ""
+            confirmation = ""
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }

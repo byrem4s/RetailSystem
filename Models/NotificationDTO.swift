@@ -29,3 +29,20 @@ struct NotificationDTO: Decodable, Identifiable {
 struct NotificationUnreadCountDTO: Decodable {
     let count: Int
 }
+
+struct NotificationPreferenceDTO: Codable, Identifiable {
+    let notificationType: String
+    let title: String
+    var enabled: Bool
+
+    var id: String { notificationType }
+
+    enum CodingKeys: String, CodingKey {
+        case notificationType = "notification_type"
+        case title, enabled
+    }
+}
+
+struct NotificationPreferenceUpdateDTO: Encodable {
+    let enabled: Bool
+}

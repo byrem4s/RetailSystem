@@ -173,9 +173,11 @@ struct F8RecommendationRowDTO: Decodable, Identifiable {
     let fulfillmentStatus: String
     let priorityScore: Double
     let reason: String
+    let sourceType: String
 
     enum CodingKeys: String, CodingKey {
         case id, origin, destination, sku, size, quantity, reason
+        case sourceType = "source_type"
         case maxQuantity = "max_quantity"
         case neededQuantity = "needed_quantity"
         case fulfillmentStatus = "fulfillment_status"
@@ -190,4 +192,48 @@ struct F8RecommendationListDTO: Decodable {
 
 struct F8RecommendationUpdateDTO: Encodable {
     let quantity: Int
+}
+
+struct F8RecommendationCreateDTO: Encodable {
+    let origin: String
+    let destination: String
+    let sku: String
+    let size: String
+    let quantity: Int
+}
+
+struct F8ManualVariantDTO: Decodable, Identifiable, Hashable {
+    let origin: String
+    let originName: String
+    let sku: String
+    let size: String
+    let description: String?
+    let brand: String?
+    let category: String?
+    let availableQuantity: Int
+
+    var id: String { "\(origin)|\(sku)|\(size)" }
+
+    enum CodingKeys: String, CodingKey {
+        case origin, sku, size, description, brand, category
+        case originName = "origin_name"
+        case availableQuantity = "available_quantity"
+    }
+}
+
+struct F8ManualBranchDTO: Decodable, Identifiable, Hashable {
+    let code: String
+    let name: String
+    let isOutlet: Bool
+    var id: String { code }
+
+    enum CodingKeys: String, CodingKey {
+        case code, name
+        case isOutlet = "is_outlet"
+    }
+}
+
+struct F8ManualOptionsDTO: Decodable {
+    let variants: [F8ManualVariantDTO]
+    let destinations: [F8ManualBranchDTO]
 }

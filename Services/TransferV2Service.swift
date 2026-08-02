@@ -11,6 +11,33 @@ final class TransferV2Service {
         )
     }
 
+    func fetchCustomerRequestOptions() async throws -> [CustomerRequestOptionDTO] {
+        try await client.fetch(
+            endpoint: "/v2/customer-requests/options",
+            responseType: [CustomerRequestOptionDTO].self
+        )
+    }
+
+    func createCustomerRequest(
+        option: CustomerRequestOptionDTO,
+        destinationBranchID: Int?,
+        quantity: Int,
+        note: String?
+    ) async throws -> TransferV2DTO {
+        try await client.post(
+            endpoint: "/v2/customer-requests",
+            body: CustomerRequestCreateDTO(
+                originBranchID: option.originBranchID,
+                destinationBranchID: destinationBranchID,
+                sku: option.sku,
+                size: option.size,
+                quantity: quantity,
+                note: note
+            ),
+            responseType: TransferV2DTO.self
+        )
+    }
+
     func approve(
         transfer: TransferV2DTO
     ) async throws -> TransferV2DTO {

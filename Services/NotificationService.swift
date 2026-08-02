@@ -34,4 +34,22 @@ final class NotificationService {
             method: "PUT"
         )
     }
+
+    func fetchPreferences() async throws -> [NotificationPreferenceDTO] {
+        try await APIClient.shared.fetch(
+            endpoint: "/v2/notifications/preferences",
+            responseType: [NotificationPreferenceDTO].self
+        )
+    }
+
+    func updatePreference(
+        type: String,
+        enabled: Bool
+    ) async throws -> NotificationPreferenceDTO {
+        try await APIClient.shared.put(
+            endpoint: "/v2/notifications/preferences/\(type)",
+            body: NotificationPreferenceUpdateDTO(enabled: enabled),
+            responseType: NotificationPreferenceDTO.self
+        )
+    }
 }

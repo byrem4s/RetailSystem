@@ -58,6 +58,16 @@ final class ExcelBatchViewModel: ObservableObject {
         }
     }
 
+    func deleteSelectedBatch() async {
+        guard let batch = selectedBatch else { return }
+        await perform {
+            try await service.deleteBatch(batchID: batch.id)
+            batches.removeAll { $0.id == batch.id }
+            selectedBatchID = batches.first?.id
+            noticeMessage = "Reposición en carga eliminada."
+        }
+    }
+
     func uploadSales(url: URL, role: UserRole?) async {
         guard let batch = selectedBatch else {
             errorMessage = "Seleccioná un lote."

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotificationsSheet: View {
     @ObservedObject var vm: NotificationViewModel
+    let onNavigate: (AppTab) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -22,7 +23,12 @@ struct NotificationsSheet: View {
                 } else {
                     List(vm.notifications) { item in
                         Button {
-                            Task { await vm.markAsRead(item) }
+                            Task {
+                                await vm.markAsRead(item)
+                                let destination = destination(for: item)
+                                dismiss()
+                                onNavigate(destination)
+                            }
                         } label: {
                             notificationRow(item)
                         }
@@ -98,9 +104,25 @@ struct NotificationsSheet: View {
         case "SALES_REQUESTED": return "doc.badge.plus"
         case "SALES_UPLOADED": return "checkmark.circle.fill"
         case "PREPARATION_REQUESTED": return "shippingbox.fill"
+        case "INCOMING_TRANSFER": return "tray.and.arrow.down.fill"
         case "BATCH_DISTRIBUTED": return "arrow.triangle.branch"
         default: return "bell.fill"
         }
+    }
+
+    private func destination(for item: NotificationDTO) -> AppTab {
+        if item.transferID != nil
+            || item.notificationType.hasPrefix("CUSTOMER_")
+            || item.notificationType == "PREPARATION_REQUESTED"
+            || item.notificationType == "INCOMING_TRANSFER" {
+            return .transfers
+        }
+        if item.batchID != nil
+            || item.notificationType == "SALES_REQUESTED"
+            || item.notificationType == "BATCH_DISTRIBUTED" {
+            return .replenishment
+        }
+        return .home
     }
 
     private func color(for item: NotificationDTO) -> Color {

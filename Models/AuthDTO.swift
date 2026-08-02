@@ -88,6 +88,34 @@ struct LogoutRequestDTO: Encodable {
     }
 }
 
+struct ForgotPasswordRequestDTO: Encodable {
+    let email: String
+}
+
+struct ForgotPasswordResponseDTO: Decodable {
+    let message: String
+    let resetToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case resetToken = "reset_token"
+    }
+}
+
+struct ResetPasswordRequestDTO: Encodable {
+    let token: String
+    let newPassword: String
+
+    enum CodingKeys: String, CodingKey {
+        case token
+        case newPassword = "new_password"
+    }
+}
+
+struct PasswordResetResultDTO: Decodable {
+    let message: String
+}
+
 struct TokenPairDTO: Decodable {
     let accessToken: String
     let refreshToken: String

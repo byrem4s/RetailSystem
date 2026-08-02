@@ -8,6 +8,8 @@ final class F8EditorViewModel: ObservableObject {
     @Published private(set) var isBusy = false
     @Published var errorMessage: String?
     @Published var noticeMessage: String?
+    @Published private(set) var savedRowIDs: Set<Int> = []
+    @Published private(set) var manualOptions: F8ManualOptionsDTO?
 
     let batchID: Int
     private let service = ExcelBatchService()
@@ -19,7 +21,14 @@ final class F8EditorViewModel: ObservableObject {
     func load() async {
         await perform {
             apply(try await service.fetchRecommendations(batchID: batchID))
+            manualOptions = try await service.fetchManualOptions(
+                batchID: batchID
+            )
         }
+    }
+
+    func quantityChanged(for rowID: Int) {
+        savedRowIDs.remove(rowID)
     }
 
     func save(_ row: F8RecommendationRowDTO) async {
@@ -34,7 +43,36 @@ final class F8EditorViewModel: ObservableObject {
                 )
             )
             noticeMessage = "Cantidad actualizada y análisis recalculado."
+            savedRowIDs.insert(row.id)
         }
+    }
+
+    func addManualRow(
+        variant: F8ManualVariantDTO,
+        destination: F8ManualBranchDTO,
+        quantity: Int
+    ) async -> Bool {
+        var succeeded = false
+        await perform {
+            apply(
+                try await service.addRecommendation(
+                    batchID: batchID,
+                    request: F8RecommendationCreateDTO(
+                        origin: variant.origin,
+                        destination: destination.code,
+                        sku: variant.sku,
+                        size: variant.size,
+                        quantity: quantity
+                    )
+                )
+            )
+            manualOptions = try await service.fetchManualOptions(
+                batchID: batchID
+            )
+            noticeMessage = "Movimiento manual validado y agregado."
+            succeeded = true
+        }
+        return succeeded
     }
 
     func remove(_ row: F8RecommendationRowDTO) async {
@@ -55,6 +93,7 @@ final class F8EditorViewModel: ObservableObject {
         quantities = Dictionary(
             uniqueKeysWithValues: result.rows.map { ($0.id, $0.quantity) }
         )
+        savedRowIDs = savedRowIDs.intersection(Set(result.rows.map(\.id)))
     }
 
     private func perform(_ operation: () async throws -> Void) async {
@@ -68,4 +107,3 @@ final class F8EditorViewModel: ObservableObject {
         }
     }
 }
-

@@ -9,6 +9,7 @@ struct TransfersV2View: View {
     @State private var rejectionReason = ""
     @State private var quantityTarget: TransferV2DTO?
     @State private var quantityText = ""
+    @State private var showsCustomerRequest = false
 
     private enum TransferFilter: String, Identifiable {
         case active = "Activos"
@@ -21,6 +22,11 @@ struct TransfersV2View: View {
 
     private var isBranchManager: Bool {
         session.user?.role == .branchManager
+    }
+
+    private var canRequestProduct: Bool {
+        session.user?.role == .branchManager
+            || session.user?.role == .warehouse
     }
 
     private var filters: [TransferFilter] {
@@ -62,6 +68,18 @@ struct TransfersV2View: View {
             .navigationTitle("Envíos")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if canRequestProduct {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showsCustomerRequest = true
+                            Task {
+                                await viewModel.loadCustomerRequestOptions()
+                            }
+                        } label: {
+                            Label("Pedir producto", systemImage: "plus")
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await viewModel.load() }
@@ -95,6 +113,21 @@ struct TransfersV2View: View {
             }
             .sheet(item: $quantityTarget) { transfer in
                 quantitySheet(transfer)
+            }
+            .sheet(isPresented: $showsCustomerRequest) {
+                CustomerProductRequestView(
+                    options: viewModel.customerRequestOptions,
+                    destinationBranchID: session.user?.branchID,
+                    isLoading: viewModel.isLoading,
+                    onSave: { option, quantity, note in
+                        await viewModel.createCustomerRequest(
+                            option: option,
+                            destinationBranchID: session.user?.branchID,
+                            quantity: quantity,
+                            note: note
+                        )
+                    }
+                )
             }
         }
     }
@@ -146,6 +179,11 @@ struct TransfersV2View: View {
                         Text(relationshipLabel(transfer))
                             .font(.caption.weight(.bold))
                             .foregroundStyle(statusColor(transfer))
+                        if transfer.transferType == "CUSTOMER_REQUEST" {
+                            Text("PEDIDO PARA VENTA INMEDIATA")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(AppColors.purple)
+                        }
                         Text(transfer.sku)
                             .font(AppTypography.cardTitle)
                         Text("Talle \(transfer.size)")
@@ -167,6 +205,21 @@ struct TransfersV2View: View {
                     if let received = transfer.receivedQuantity {
                         quantityLabel("Recibido", received)
                     }
+                }
+
+                if let estimated = transfer.estimatedDeliveryDate {
+                    Label(
+                        "Llegada estimada: \(displayDate(estimated))",
+                        systemImage: "calendar.badge.clock"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppColors.secondaryText)
+                }
+
+                if let note = transfer.requestNote, !note.isEmpty {
+                    Label(note, systemImage: "text.bubble")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.secondaryText)
                 }
 
                 actionButtons(transfer)
@@ -220,11 +273,15 @@ struct TransfersV2View: View {
         let isDestination = branchID == transfer.destinationBranchID
         let isOwnTransfer = branchID == transfer.originBranchID
             || isDestination
+        let canOperateCustomerOrigin = transfer.transferType == "CUSTOMER_REQUEST"
+            && branchID == transfer.originBranchID
+        let canApprove = canOperate || canOperateCustomerOrigin
 
         if canOperate || isOwnTransfer {
             Divider()
             HStack(spacing: AppSpacing.small) {
-                if transfer.status == "RECOMMENDED" && canOperate {
+                if ["RECOMMENDED", "REQUESTED"].contains(transfer.status)
+                    && canApprove {
                     operationButton(
                         "Aprobar",
                         systemImage: "checkmark"
@@ -233,7 +290,7 @@ struct TransfersV2View: View {
                     }
                 }
 
-                if transfer.status == "APPROVED" && canOperate {
+                if transfer.status == "APPROVED" && canApprove {
                     operationButton(
                         "Iniciar",
                         systemImage: "shippingbox"
@@ -243,7 +300,7 @@ struct TransfersV2View: View {
                 }
 
                 if ["APPROVED", "PREPARING"].contains(transfer.status)
-                    && canOperate {
+                    && canApprove {
                     operationButton(
                         "Despachar",
                         systemImage: "truck.box"
@@ -263,7 +320,7 @@ struct TransfersV2View: View {
                     }
                 }
 
-                if ["RECOMMENDED", "APPROVED", "PREPARING"]
+                if ["REQUESTED", "RECOMMENDED", "APPROVED", "PREPARING"]
                     .contains(transfer.status) {
                     Menu {
                         if canOperate {
@@ -389,7 +446,7 @@ struct TransfersV2View: View {
             return transfer.displayStatus
         }
         switch transfer.status {
-        case "RECOMMENDED", "APPROVED", "PREPARING":
+        case "REQUESTED", "RECOMMENDED", "APPROVED", "PREPARING":
             return "Esperando envío"
         case "DISPATCHED", "PARTIALLY_RECEIVED":
             return "En proceso"
@@ -400,6 +457,17 @@ struct TransfersV2View: View {
         default:
             return transfer.displayStatus
         }
+    }
+
+    private func displayDate(_ value: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "es_AR")
+        output.dateFormat = "d MMM yyyy"
+        guard let date = input.date(from: value) else { return value }
+        return output.string(from: date)
     }
 
     private func relationshipIcon(_ transfer: TransferV2DTO) -> String {
@@ -507,6 +575,131 @@ struct TransfersV2View: View {
                     .disabled((Int(quantityText) ?? 0) <= 0)
                 }
             }
+        }
+    }
+}
+
+private struct CustomerProductRequestView: View {
+    let options: [CustomerRequestOptionDTO]
+    let destinationBranchID: Int?
+    let isLoading: Bool
+    let onSave: (CustomerRequestOptionDTO, Int, String?) async -> Bool
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var search = ""
+    @State private var selectedID: String?
+    @State private var quantity = 1
+    @State private var note = ""
+    @State private var isSaving = false
+
+    private var filtered: [CustomerRequestOptionDTO] {
+        let value = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return options }
+        return options.filter {
+            ($0.description ?? $0.sku).localizedCaseInsensitiveContains(value)
+                || $0.sku.localizedCaseInsensitiveContains(value)
+                || $0.originBranch.localizedCaseInsensitiveContains(value)
+        }
+    }
+
+    private var selected: CustomerRequestOptionDTO? {
+        options.first { $0.id == selectedID }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Buscar stock") {
+                    TextField("Producto, SKU o sucursal", text: $search)
+                    Picker("Producto", selection: $selectedID) {
+                        ForEach(filtered) { option in
+                            Text(
+                                "\(option.description ?? option.sku) · "
+                                + "T. \(option.size) · \(option.originBranch)"
+                            )
+                            .tag(Optional(option.id))
+                        }
+                    }
+                }
+
+                if let selected {
+                    Section("Pedido") {
+                        LabeledContent("SKU", value: selected.sku)
+                        LabeledContent("Talle", value: selected.size)
+                        LabeledContent("Origen", value: selected.originBranch)
+                        LabeledContent(
+                            "Stock según última carga",
+                            value: "\(selected.availableQuantity)"
+                        )
+                        Stepper(
+                            "Cantidad: \(quantity)",
+                            value: $quantity,
+                            in: 1...max(selected.availableQuantity, 1)
+                        )
+                        TextField(
+                            "Observación para la otra sucursal",
+                            text: $note,
+                            axis: .vertical
+                        )
+                        .lineLimit(2...4)
+                    }
+
+                    Section {
+                        Label(
+                            "La sucursal de origen debe confirmar que el producto "
+                            + "existe físicamente antes de prepararlo.",
+                            systemImage: "exclamationmark.shield"
+                        )
+                        .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Pedir producto")
+            .navigationBarTitleDisplayMode(.inline)
+            .overlay {
+                if isLoading && options.isEmpty {
+                    ProgressView("Consultando stock…")
+                } else if !isLoading && options.isEmpty {
+                    ContentUnavailableView(
+                        "Sin stock disponible",
+                        systemImage: "shippingbox",
+                        description: Text(
+                            "Generá una reposición con stock actualizado antes de usar este pedido."
+                        )
+                    )
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Solicitar") {
+                        guard let selected else { return }
+                        isSaving = true
+                        Task {
+                            if await onSave(
+                                selected,
+                                quantity,
+                                note.isEmpty ? nil : note
+                            ) {
+                                dismiss()
+                            }
+                            isSaving = false
+                        }
+                    }
+                    .disabled(selected == nil || isSaving)
+                }
+            }
+            .onAppear {
+                selectedID = options.first?.id
+            }
+            .onChange(of: options) { _, values in
+                if !values.contains(where: { $0.id == selectedID }) {
+                    selectedID = values.first?.id
+                }
+            }
+            .onChange(of: selectedID) { _, _ in quantity = 1 }
         }
     }
 }

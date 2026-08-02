@@ -26,6 +26,13 @@ final class ExcelBatchService {
         )
     }
 
+    func deleteBatch(batchID: Int) async throws {
+        try await APIClient.shared.send(
+            endpoint: "/v2/excel-batches/\(batchID)",
+            method: "DELETE"
+        )
+    }
+
     func uploadSales(
         batchID: Int,
         fileURL: URL,
@@ -70,6 +77,27 @@ final class ExcelBatchService {
     ) async throws -> F8RecommendationListDTO {
         try await APIClient.shared.fetch(
             endpoint: "/v2/excel-batches/\(batchID)/recommendations",
+            responseType: F8RecommendationListDTO.self
+        )
+    }
+
+    func fetchManualOptions(batchID: Int) async throws -> F8ManualOptionsDTO {
+        try await APIClient.shared.fetch(
+            endpoint: (
+                "/v2/excel-batches/\(batchID)"
+                + "/recommendations/manual-options"
+            ),
+            responseType: F8ManualOptionsDTO.self
+        )
+    }
+
+    func addRecommendation(
+        batchID: Int,
+        request: F8RecommendationCreateDTO
+    ) async throws -> F8RecommendationListDTO {
+        try await APIClient.shared.post(
+            endpoint: "/v2/excel-batches/\(batchID)/recommendations",
+            body: request,
             responseType: F8RecommendationListDTO.self
         )
     }

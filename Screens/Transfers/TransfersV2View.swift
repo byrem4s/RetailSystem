@@ -154,7 +154,7 @@ struct TransfersV2View: View {
                     }
                     Spacer()
                     StatusPill(
-                        title: transfer.displayStatus,
+                        title: contextualStatus(transfer),
                         color: statusColor(transfer)
                     )
                 }
@@ -338,8 +338,7 @@ struct TransfersV2View: View {
         case .receive:
             return viewModel.transfers.filter {
                 $0.destinationBranchID == branchID
-                    && ["DISPATCHED", "PARTIALLY_RECEIVED"]
-                    .contains($0.status)
+                    && !isClosed($0)
             }
         case .closed:
             return viewModel.transfers.filter(isClosed)
@@ -364,7 +363,7 @@ struct TransfersV2View: View {
         case .prepare:
             return "Cuando se distribuya un F8, verás aquí lo que sale de tu sucursal."
         case .receive:
-            return "Los envíos despachados hacia tu sucursal aparecerán aquí."
+            return "Los productos aparecerán cuando se distribuya el F8, aunque todavía no hayan sido despachados."
         case .closed:
             return "Todavía no hay movimientos completados o rechazados."
         case .active:
@@ -383,6 +382,24 @@ struct TransfersV2View: View {
             return "VAS A RECIBIR"
         }
         return "MOVIMIENTO"
+    }
+
+    private func contextualStatus(_ transfer: TransferV2DTO) -> String {
+        guard transfer.destinationBranchID == session.user?.branchID else {
+            return transfer.displayStatus
+        }
+        switch transfer.status {
+        case "RECOMMENDED", "APPROVED", "PREPARING":
+            return "Esperando envío"
+        case "DISPATCHED", "PARTIALLY_RECEIVED":
+            return "En proceso"
+        case "COMPLETED":
+            return "Recibido"
+        case "REJECTED":
+            return "Cancelado"
+        default:
+            return transfer.displayStatus
+        }
     }
 
     private func relationshipIcon(_ transfer: TransferV2DTO) -> String {

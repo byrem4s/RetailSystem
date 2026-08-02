@@ -448,7 +448,6 @@ struct HomeView: View {
         guard let branchID = session.user?.branchID else { return 0 }
         return activeTransfers.filter {
             $0.destinationBranchID == branchID
-                && ["DISPATCHED", "PARTIALLY_RECEIVED"].contains($0.status)
         }.count
     }
     private var coordinationTasks: Int {

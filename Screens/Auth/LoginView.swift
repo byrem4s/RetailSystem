@@ -267,9 +267,6 @@ private struct PasswordRecoveryView: View {
     let initialEmail: String
     @Environment(\.dismiss) private var dismiss
     @State private var email: String
-    @State private var token = ""
-    @State private var password = ""
-    @State private var confirmation = ""
     @State private var message: String?
     @State private var errorMessage: String?
     @State private var isWorking = false
@@ -284,32 +281,21 @@ private struct PasswordRecoveryView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Solicitar código") {
+                Section {
                     TextField("Correo", text: $email)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
-                    Button("Enviar instrucciones") {
-                        Task { await requestCode() }
+                        .textContentType(.emailAddress)
+                    Button("Solicitar restablecimiento") {
+                        Task { await requestReset() }
                     }
                     .disabled(email.isEmpty || isWorking)
-                }
-
-                Section("Crear contraseña nueva") {
-                    TextField("Código recibido", text: $token)
-                        .textInputAutocapitalization(.never)
-                    SecureField("Nueva contraseña", text: $password)
-                    SecureField("Repetir contraseña", text: $confirmation)
-                    Text("Debe tener al menos 12 caracteres.")
-                        .font(.caption)
-                        .foregroundStyle(AppColors.secondaryText)
-                    Button("Actualizar contraseña") {
-                        Task { await changePassword() }
-                    }
-                    .disabled(
-                        token.count < 20
-                            || password.count < 12
-                            || password != confirmation
-                            || isWorking
+                } header: {
+                    Text("Solicitar ayuda")
+                } footer: {
+                    Text(
+                        "Un administrador recibirá la solicitud y te dará "
+                        + "una contraseña temporal. Al ingresar deberás cambiarla."
                     )
                 }
 
@@ -336,33 +322,13 @@ private struct PasswordRecoveryView: View {
         }
     }
 
-    private func requestCode() async {
+    private func requestReset() async {
         isWorking = true
         errorMessage = nil
         defer { isWorking = false }
         do {
             let result = try await service.forgotPassword(email: email)
             message = result.message
-            if let debugToken = result.resetToken {
-                token = debugToken
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func changePassword() async {
-        isWorking = true
-        errorMessage = nil
-        defer { isWorking = false }
-        do {
-            let result = try await service.resetPassword(
-                token: token,
-                newPassword: password
-            )
-            message = result.message
-            password = ""
-            confirmation = ""
         } catch {
             errorMessage = error.localizedDescription
         }

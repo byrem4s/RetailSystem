@@ -11,7 +11,11 @@ struct RetailSystemApp: App {
                 if sessionStore.isRestoring {
                     restoringView
                 } else if sessionStore.isAuthenticated {
-                    RootView()
+                    if sessionStore.user?.mustChangePassword == true {
+                        RequiredPasswordChangeView()
+                    } else {
+                        RootView()
+                    }
                 } else {
                     LoginView()
                 }

@@ -63,3 +63,15 @@ struct UserCreateRequestDTO: Encodable {
 struct UserActiveRequestDTO: Encodable {
     let active: Bool
 }
+
+struct AdminPasswordResetDTO: Decodable {
+    let message: String
+    let temporaryPassword: String
+    let user: AuthUserDTO
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case temporaryPassword = "temporary_password"
+        case user
+    }
+}

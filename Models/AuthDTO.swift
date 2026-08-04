@@ -47,6 +47,8 @@ struct AuthUserDTO: Codable, Identifiable {
     let branchID: Int?
     let active: Bool
     let protected: Bool
+    let mustChangePassword: Bool
+    let passwordResetRequestedAt: String?
     let createdAt: String
 
     enum CodingKeys: String, CodingKey {
@@ -58,6 +60,8 @@ struct AuthUserDTO: Codable, Identifiable {
         case branchID = "branch_id"
         case active
         case protected
+        case mustChangePassword = "must_change_password"
+        case passwordResetRequestedAt = "password_reset_requested_at"
         case createdAt = "created_at"
     }
 
@@ -114,6 +118,16 @@ struct ResetPasswordRequestDTO: Encodable {
 
 struct PasswordResetResultDTO: Decodable {
     let message: String
+}
+
+struct ChangePasswordRequestDTO: Encodable {
+    let currentPassword: String
+    let newPassword: String
+
+    enum CodingKeys: String, CodingKey {
+        case currentPassword = "current_password"
+        case newPassword = "new_password"
+    }
 }
 
 struct TokenPairDTO: Decodable {

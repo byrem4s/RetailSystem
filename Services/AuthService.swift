@@ -68,4 +68,18 @@ final class AuthService {
             responseType: PasswordResetResultDTO.self
         )
     }
+
+    func changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) async throws -> PasswordResetResultDTO {
+        try await client.post(
+            endpoint: "/auth/change-password",
+            body: ChangePasswordRequestDTO(
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            ),
+            responseType: PasswordResetResultDTO.self
+        )
+    }
 }

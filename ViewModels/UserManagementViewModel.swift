@@ -71,4 +71,19 @@ final class UserManagementViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+
+    func resetPassword(for user: AuthUserDTO) async -> AdminPasswordResetDTO? {
+        errorMessage = nil
+        do {
+            let result = try await service.resetPassword(userID: user.id)
+            if let index = users.firstIndex(where: { $0.id == result.user.id }) {
+                users[index] = result.user
+            }
+            return result
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
 }

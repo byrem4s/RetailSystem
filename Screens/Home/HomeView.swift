@@ -476,6 +476,7 @@ struct HomeView: View {
         case "SALES_UPLOADED": return "checkmark.circle"
         case "PREPARATION_REQUESTED": return "shippingbox"
         case "BATCH_DISTRIBUTED": return "arrow.triangle.branch"
+        case "PASSWORD_RESET_REQUESTED": return "key.fill"
         default: return "bell"
         }
     }

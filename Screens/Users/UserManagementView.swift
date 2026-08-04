@@ -6,6 +6,8 @@ struct UserManagementView: View {
     @State private var showingCreate = false
     @State private var searchText = ""
     @State private var showsInactive = true
+    @State private var resetCandidate: AuthUserDTO?
+    @State private var temporaryPassword: TemporaryPasswordPresentation?
 
     var body: some View {
         ZStack {
@@ -92,6 +94,38 @@ struct UserManagementView: View {
                 }
             }
         }
+        .sheet(item: $temporaryPassword) { presentation in
+            TemporaryPasswordSheet(presentation: presentation)
+        }
+        .confirmationDialog(
+            "Restablecer contraseña",
+            isPresented: Binding(
+                get: { resetCandidate != nil },
+                set: { if !$0 { resetCandidate = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Generar contraseña temporal", role: .destructive) {
+                guard let user = resetCandidate else { return }
+                resetCandidate = nil
+                Task {
+                    if let result = await viewModel.resetPassword(for: user) {
+                        temporaryPassword = TemporaryPasswordPresentation(
+                            userName: result.user.fullName,
+                            password: result.temporaryPassword
+                        )
+                    }
+                }
+            }
+            Button("Cancelar", role: .cancel) {
+                resetCandidate = nil
+            }
+        } message: {
+            Text(
+                "Se cerrarán las sesiones anteriores. La contraseña temporal "
+                + "se mostrará una sola vez."
+            )
+        }
         .alert(
             "No se pudo completar",
             isPresented: Binding(
@@ -116,12 +150,26 @@ struct UserManagementView: View {
                         .background(roleColor(user.role).opacity(0.12))
                         .clipShape(Circle())
                     Spacer()
-                    StatusPill(
-                        title: user.active ? "ACTIVO" : "INACTIVO",
-                        color: user.active
-                            ? AppColors.green
-                            : AppColors.secondaryText
-                    )
+                    VStack(alignment: .trailing, spacing: 6) {
+                        StatusPill(
+                            title: user.active ? "ACTIVO" : "INACTIVO",
+                            color: user.active
+                                ? AppColors.green
+                                : AppColors.secondaryText
+                        )
+                        if user.passwordResetRequestedAt != nil {
+                            StatusPill(
+                                title: "SOLICITÓ CLAVE",
+                                color: AppColors.orange
+                            )
+                        }
+                        if user.mustChangePassword {
+                            StatusPill(
+                                title: "CAMBIO PENDIENTE",
+                                color: AppColors.blue
+                            )
+                        }
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -144,13 +192,27 @@ struct UserManagementView: View {
                 Divider()
 
                 if canModify(user) {
-                    Button(
-                        user.active ? "Desactivar cuenta" : "Activar cuenta",
-                        role: user.active ? .destructive : nil
-                    ) {
-                        Task { await viewModel.toggle(user) }
+                    VStack(alignment: .leading, spacing: AppSpacing.small) {
+                        if user.active {
+                            Button {
+                                resetCandidate = user
+                            } label: {
+                                Label(
+                                    "Restablecer contraseña",
+                                    systemImage: "key.fill"
+                                )
+                            }
+                            .font(.subheadline.weight(.semibold))
+                        }
+
+                        Button(
+                            user.active ? "Desactivar cuenta" : "Activar cuenta",
+                            role: user.active ? .destructive : nil
+                        ) {
+                            Task { await viewModel.toggle(user) }
+                        }
+                        .font(.subheadline.weight(.semibold))
                     }
-                    .font(.subheadline.weight(.semibold))
                 } else {
                     Label(
                         "Cuenta protegida",
@@ -213,6 +275,70 @@ struct UserManagementView: View {
         case .companyAdmin: return AppColors.blue
         case .branchManager: return AppColors.green
         case .warehouse: return AppColors.orange
+        }
+    }
+}
+
+private struct TemporaryPasswordPresentation: Identifiable {
+    let id = UUID()
+    let userName: String
+    let password: String
+}
+
+private struct TemporaryPasswordSheet: View {
+    let presentation: TemporaryPasswordPresentation
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: AppSpacing.large) {
+                Image(systemName: "key.viewfinder")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(AppColors.blue)
+
+                VStack(spacing: AppSpacing.small) {
+                    Text("Contraseña temporal")
+                        .font(AppTypography.pageTitle)
+                    Text(presentation.userName)
+                        .font(.subheadline)
+                        .foregroundStyle(AppColors.secondaryText)
+                }
+
+                Text(presentation.password)
+                    .font(.system(.title2, design: .monospaced).weight(.bold))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppColors.blue.opacity(0.10))
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+
+                Text(
+                    "Copiala ahora y comunicala de forma privada. Al cerrar "
+                    + "esta pantalla no volverá a mostrarse."
+                )
+                .font(.subheadline)
+                .foregroundStyle(AppColors.secondaryText)
+                .multilineTextAlignment(.center)
+
+                ShareLink(item: presentation.password) {
+                    Label("Compartir contraseña", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PrimaryActionButtonStyle())
+
+                Spacer()
+            }
+            .padding(24)
+            .navigationTitle("Acceso temporal")
+            .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled()
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
         }
     }
 }

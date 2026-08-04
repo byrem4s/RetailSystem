@@ -38,4 +38,12 @@ final class UserManagementService {
             responseType: AuthUserDTO.self
         )
     }
+
+
+    func resetPassword(userID: Int) async throws -> AdminPasswordResetDTO {
+        try await client.post(
+            endpoint: "/v2/users/\(userID)/reset-password",
+            responseType: AdminPasswordResetDTO.self
+        )
+    }
 }

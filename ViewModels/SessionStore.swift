@@ -104,6 +104,26 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func changeRequiredPassword(
+        currentPassword: String,
+        newPassword: String
+    ) async -> Bool {
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            _ = try await authService.changePassword(
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            )
+            user = try await authService.me()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func invalidateSession() {
         tokenStore.clear()
         user = nil

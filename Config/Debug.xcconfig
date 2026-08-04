@@ -1,2 +1,2 @@
-API_BASE_URL = http:/$()/10.0.0.87:8080
+API_BASE_URL = https:/$()/backend-production-19d8.up.railway.app
 PRODUCT_NAME = RetailSystem
